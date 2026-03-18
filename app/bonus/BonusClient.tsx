@@ -7,12 +7,14 @@ import type { Riddle } from '@/lib/riddles'
 
 const KIDS = ['Owen', 'Zoe', 'Max', 'Emma']
 
-export default function BonusClient({ riddle }: { riddle: Riddle }) {
+export default function BonusClient({ riddle, claimants }: { riddle: Riddle; claimants: string[] }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [kid, setKid] = useState(KIDS[0])
   const [answer, setAnswer] = useState('')
   const [error, setError] = useState('')
+
+  const alreadyClaimed = claimants.includes(kid)
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -39,7 +41,7 @@ export default function BonusClient({ riddle }: { riddle: Riddle }) {
             <button
               key={name}
               type="button"
-              onClick={() => setKid(name)}
+              onClick={() => { setKid(name); setError('') }}
               className={`rounded-xl border py-2 font-bold transition-colors ${
                 kid === name
                   ? 'border-teal-500 bg-teal-100 text-teal-700 dark:bg-teal-900/50 dark:text-teal-300'
@@ -47,40 +49,49 @@ export default function BonusClient({ riddle }: { riddle: Riddle }) {
               }`}
             >
               {name}
+              {claimants.includes(name) && <span className="ml-1 text-xs opacity-60">✓</span>}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Answer */}
-      <div>
-        <label className="mb-1 block text-sm font-semibold text-slate-500 dark:text-slate-400">Your answer</label>
-        <input
-          type="text"
-          value={answer}
-          onChange={(e) => setAnswer(e.target.value)}
-          placeholder="Type your answer..."
-          required
-          autoComplete="off"
-          autoCorrect="off"
-          autoCapitalize="off"
-          className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 placeholder-slate-400 focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
-        />
-      </div>
-
-      {error && (
-        <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-600 dark:border-red-800 dark:bg-red-900/30 dark:text-red-300">
-          {error}
+      {alreadyClaimed ? (
+        <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700 dark:border-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
+          {kid} already cracked today&apos;s vault! Come back tomorrow.
         </p>
-      )}
+      ) : (
+        <>
+          {/* Answer */}
+          <div>
+            <label className="mb-1 block text-sm font-semibold text-slate-500 dark:text-slate-400">Your answer</label>
+            <input
+              type="text"
+              value={answer}
+              onChange={(e) => setAnswer(e.target.value)}
+              placeholder="Type your answer..."
+              required
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 placeholder-slate-400 focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
+            />
+          </div>
 
-      <button
-        type="submit"
-        disabled={isPending || !answer.trim()}
-        className="w-full rounded-xl bg-teal-600 py-3 font-black text-white transition-colors hover:bg-teal-500 disabled:opacity-50"
-      >
-        {isPending ? 'Checking...' : 'Submit Answer 🔐'}
-      </button>
+          {error && (
+            <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-600 dark:border-red-800 dark:bg-red-900/30 dark:text-red-300">
+              {error}
+            </p>
+          )}
+
+          <button
+            type="submit"
+            disabled={isPending || !answer.trim()}
+            className="w-full rounded-xl bg-teal-600 py-3 font-black text-white transition-colors hover:bg-teal-500 disabled:opacity-50"
+          >
+            {isPending ? 'Checking...' : 'Submit Answer 🔐'}
+          </button>
+        </>
+      )}
     </form>
   )
 }

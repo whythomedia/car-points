@@ -30,23 +30,24 @@ export async function updateKidPoints(name: string, delta: number): Promise<void
   await redis.set('kids', updated)
 }
 
-export async function getTodayVaultStatus(): Promise<{ claimed: boolean; winner?: string }> {
-  const today = new Date().toISOString().split('T')[0]
-  const [vaultDate, vaultWinner] = await Promise.all([
-    redis.get<string>('vault_date'),
-    redis.get<string>('vault_winner'),
-  ])
-  if (vaultDate === today) {
-    return { claimed: true, winner: vaultWinner ?? undefined }
-  }
-  return { claimed: false }
+function todayKey() {
+  return `vault:${new Date().toISOString().split('T')[0]}`
 }
 
-export async function claimVault(kidName: string): Promise<void> {
-  const today = new Date().toISOString().split('T')[0]
-  await Promise.all([
-    redis.set('vault_date', today),
-    redis.set('vault_winner', kidName),
-  ])
-  await updateKidPoints(kidName, 5)
+export async function getVaultClaimantsToday(): Promise<string[]> {
+  const claimants = await redis.get<string[]>(todayKey())
+  return claimants ?? []
+}
+
+export async function hasKidClaimedToday(kidName: string): Promise<boolean> {
+  const claimants = await getVaultClaimantsToday()
+  return claimants.includes(kidName)
+}
+
+export async function claimVaultForKid(kidName: string): Promise<void> {
+  const claimants = await getVaultClaimantsToday()
+  if (!claimants.includes(kidName)) {
+    await redis.set(todayKey(), [...claimants, kidName])
+    await updateKidPoints(kidName, 5)
+  }
 }

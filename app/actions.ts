@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { claimVault, getTodayVaultStatus, updateKidPoints } from '@/lib/redis'
+import { claimVaultForKid, getVaultClaimantsToday, hasKidClaimedToday, updateKidPoints } from '@/lib/redis'
 import { getTodayRiddle } from '@/lib/riddles'
 
 export async function updateScore(kidName: string, delta: number): Promise<void> {
@@ -18,16 +18,16 @@ export async function submitVaultAnswer(
   kidName: string,
   answer: string
 ): Promise<{ success: boolean; error?: string }> {
-  const vault = await getTodayVaultStatus()
-  if (vault.claimed) {
-    return { success: false, error: `Already claimed today by ${vault.winner}!` }
+  const already = await hasKidClaimedToday(kidName)
+  if (already) {
+    return { success: false, error: `${kidName} already claimed the vault today!` }
   }
 
   const riddle = getTodayRiddle()
   const normalized = answer.trim().toLowerCase()
 
   if (riddle.answers.includes(normalized)) {
-    await claimVault(kidName)
+    await claimVaultForKid(kidName)
     revalidatePath('/')
     revalidatePath('/bonus')
     return { success: true }
