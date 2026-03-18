@@ -1,36 +1,71 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Car Points
 
-## Getting Started
+A mobile-first PWA for gamifying family road trips. Parents award points to kids throughout the trip; kids can check the scoreboard, solve a daily riddle for bonus points, and watch the route unfold on a map.
 
-First, run the development server:
+## How it works
 
-```bash
+- **Scoreboard** — Public dashboard showing each kid's current point total. No login required.
+- **Daily Vault** — Once per day, any kid can claim +5 points by solving a riddle. First correct answer wins; vault locks until midnight.
+- **Admin panel** — Password-protected. Parents can add or deduct points in any increment. Awards trigger a confetti celebration page.
+- **Map** — Interactive US map showing the trip route with toggleable art layers (state outlines, animals, labels).
+
+## Stack
+
+- [Next.js 16](https://nextjs.org) (App Router, Server Actions, Turbopack)
+- [Tailwind CSS v4](https://tailwindcss.com)
+- [Upstash Redis](https://upstash.com) — serverless KV store for points and vault state
+- Deployed on [Vercel](https://vercel.com)
+
+## Pages
+
+| Route | Access | Description |
+|---|---|---|
+| `/` | Public | Points scoreboard |
+| `/map` | Public | Trip route map |
+| `/bonus` | Public | Daily riddle vault |
+| `/celebrate` | Public | Confetti page (`?kid=Name&action=...`) |
+| `/admin` | Password | Award/deduct points per kid |
+
+## Local development
+
+\`\`\`bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+\`\`\`
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Requires a \`.env.local\` file (see below). The app seeds default data into Redis on first run if the \`kids\` key doesn't exist.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Environment variables
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+\`\`\`
+UPSTASH_REDIS_REST_URL=   # From Upstash console
+UPSTASH_REDIS_REST_TOKEN= # From Upstash console
+ADMIN_PASSWORD=           # Password for /admin panel
+\`\`\`
 
-## Learn More
+Add the same variables to your Vercel project settings for production.
 
-To learn more about Next.js, take a look at the following resources:
+## Deployment
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+\`\`\`bash
+cd site
+vercel
+\`\`\`
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Connect a custom domain in the Vercel dashboard and point a CNAME to \`cname.vercel-dns.com\`.
 
-## Deploy on Vercel
+## Customization
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- **Kids and avatars** — \`app/page.tsx\` (names and emojis)
+- **Admin kids list** — \`app/admin/page.tsx\` and \`app/bonus/BonusClient.tsx\`
+- **Riddles** — \`lib/riddles.ts\` (add/edit as needed, rotates by day of year)
+- **Route stops** — \`app/map/page.tsx\` (\`STOPS\` array, coordinates in SVG viewBox space)
+- **Map art** — \`public/usmap_outlines.png\`, \`usmap_animals.png\`, \`usmap_labels.png\`
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## PWA
+
+Installable as a home screen app on iOS and Android. Icons use \`vaughn_80/120/152.png\`. For best Android support, add 192×192 and 512×512 versions to \`public/\` and \`public/manifest.json\`.
+
+## Project history
+
+Originally built as a Flask/Python app with JSONBin storage. Rebuilt in Next.js with Upstash Redis for better mobile performance, simpler deployment, and PWA support.

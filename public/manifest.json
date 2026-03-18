@@ -1,0 +1,28 @@
+{
+  "name": "Car Points",
+  "short_name": "Car Points",
+  "description": "Smith family road trip points tracker",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#109488",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/vaughn_80.png",
+      "sizes": "80x80",
+      "type": "image/png"
+    },
+    {
+      "src": "/vaughn_120.png",
+      "sizes": "120x120",
+      "type": "image/png"
+    },
+    {
+      "src": "/vaughn_152.png",
+      "sizes": "152x152",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
