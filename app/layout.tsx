@@ -53,6 +53,14 @@ function NavBar() {
           <span className="text-xs font-semibold">Vault</span>
         </Link>
 
+        {/* World Cup */}
+        <Link href="/worldcup" className="flex flex-col items-center gap-1 px-4 py-1 text-slate-500 hover:text-teal-600 transition-colors dark:text-slate-400 dark:hover:text-teal-400">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M8 21h8m-4-4v4m6-17H6v5a6 6 0 0012 0V4zm0 0h3v2a3 3 0 01-3 3m-12-5H3v2a3 3 0 003 3" />
+          </svg>
+          <span className="text-xs font-semibold">Cup</span>
+        </Link>
+
         {/* Admin */}
         <Link href="/admin" className="flex flex-col items-center gap-1 px-4 py-1 text-slate-500 hover:text-teal-600 transition-colors dark:text-slate-400 dark:hover:text-teal-400">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

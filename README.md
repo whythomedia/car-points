@@ -23,6 +23,7 @@ A mobile-first PWA for gamifying family road trips. Parents award points to kids
 | `/` | Public | Points scoreboard |
 | `/map` | Public | Trip route map |
 | `/bonus` | Public | Daily riddle vault |
+| `/worldcup` | Public | 2026 World Cup group-stage predictions |
 | `/celebrate` | Public | Confetti page (`?kid=Name&action=...`) |
 | `/admin` | Password | Award/deduct points per kid |
 
@@ -61,6 +62,7 @@ Connect a custom domain in the Vercel dashboard and point a CNAME to \`cname.ver
 - **Riddles** — \`lib/riddles.ts\` (add/edit as needed, rotates by day of year)
 - **Route stops** — \`app/map/page.tsx\` (\`STOPS\` array, coordinates in SVG viewBox space)
 - **Map art** — \`public/usmap_outlines.png\`, \`usmap_animals.png\`, \`usmap_labels.png\`
+- **World Cup** — \`lib/worldcup/data.ts\` (groups, team power ratings, played results). Edit \`results\` as matches finish, or enter them live from the \`/worldcup\` page. Unplayed matches are predicted by \`lib/worldcup/predict.ts\`; top 2 per group plus the 8 best third-placed teams advance.
 
 ## PWA
 
