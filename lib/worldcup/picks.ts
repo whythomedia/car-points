@@ -1,5 +1,7 @@
 import { redis } from '../redis'
 import { PREDICTORS } from './brand'
+import { matchId } from './store'
+import { SEED_PICKS } from './seed-picks'
 
 // Each family member's predicted score for a match, plus the scoring rules:
 //   exact score  → 3 pts
@@ -65,12 +67,28 @@ export function buildLeaderboard(
   )
 }
 
-export async function getAllPicks(): Promise<AllPicks> {
-  try {
-    return (await redis.get<AllPicks>(KEY)) ?? {}
-  } catch {
-    return {}
+// The hand-transcribed picks, keyed by canonical match id.
+function seedPicks(): AllPicks {
+  const out: AllPicks = {}
+  for (const s of SEED_PICKS) {
+    out[matchId(s.group, s.home, s.away)] = { ...s.picks }
   }
+  return out
+}
+
+// Seed picks form the base; anything entered later via the app overrides them
+// per (match, user) from Redis.
+export async function getAllPicks(): Promise<AllPicks> {
+  const all = seedPicks()
+  try {
+    const stored = (await redis.get<AllPicks>(KEY)) ?? {}
+    for (const [mid, byUser] of Object.entries(stored)) {
+      all[mid] = { ...(all[mid] ?? {}), ...byUser }
+    }
+  } catch {
+    // Offline / Redis unavailable: seed picks still populate the leaderboard.
+  }
+  return all
 }
 
 export async function savePick(
