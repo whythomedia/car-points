@@ -5,7 +5,15 @@ import { subscribeToPush, unsubscribeFromPush } from '@/app/actions'
 
 const VAPID = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
 
-type Status = 'loading' | 'unsupported' | 'needs-install' | 'off' | 'on' | 'denied' | 'working'
+type Status =
+  | 'loading'
+  | 'unsupported'
+  | 'needs-install'
+  | 'unconfigured'
+  | 'off'
+  | 'on'
+  | 'denied'
+  | 'working'
 
 function urlB64ToUint8Array(base64: string): Uint8Array {
   const padding = '='.repeat((4 - (base64.length % 4)) % 4)
@@ -30,10 +38,15 @@ export default function NotifyCard() {
     async function init() {
       const supported =
         'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window
-      if (!supported || !VAPID) {
+      if (!supported) {
         // iOS only exposes Push once installed to the home screen.
         const iOS = /iphone|ipad|ipod/i.test(navigator.userAgent)
         setStatus(iOS && !isStandalone() ? 'needs-install' : 'unsupported')
+        return
+      }
+      if (!VAPID) {
+        // Push API is available but the public key didn't make it into the build.
+        setStatus('unconfigured')
         return
       }
       if (Notification.permission === 'denied') {
@@ -93,7 +106,21 @@ export default function NotifyCard() {
       <div className={base}>
         <span className="text-xl">🔔</span>
         <p className="flex-1 text-slate-600 dark:text-slate-300">
-          Add Car Points to your Home Screen (Share → Add to Home Screen) to get trip alerts.
+          Add Car Points to your Home Screen (Share → Add to Home Screen), then open it from the
+          icon and tap <strong>Turn on</strong> for trip alerts.
+        </p>
+      </div>
+    )
+  }
+
+  if (status === 'unconfigured') {
+    return (
+      <div className={base}>
+        <span className="text-xl">🔔</span>
+        <p className="flex-1 text-slate-600 dark:text-slate-300">
+          Alerts aren&apos;t set up on this build (missing notification key). Add
+          <code className="mx-1 rounded bg-slate-100 px-1 text-xs dark:bg-slate-700">NEXT_PUBLIC_VAPID_PUBLIC_KEY</code>
+          in Vercel and redeploy.
         </p>
       </div>
     )
