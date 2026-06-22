@@ -72,3 +72,22 @@ export async function awardFlagQuiz(kidName: string): Promise<boolean> {
   await updateKidPoints(kidName, 10)
   return true
 }
+
+// License-plate game — a shared board of spotted states (by slug).
+const PLATES_KEY = 'plates:spotted'
+
+export async function getSpottedStates(): Promise<string[]> {
+  try {
+    return (await redis.get<string[]>(PLATES_KEY)) ?? []
+  } catch {
+    return []
+  }
+}
+
+export async function setStateSpotted(slug: string, spotted: boolean): Promise<void> {
+  const current = await getSpottedStates()
+  const set = new Set(current)
+  if (spotted) set.add(slug)
+  else set.delete(slug)
+  await redis.set(PLATES_KEY, [...set])
+}

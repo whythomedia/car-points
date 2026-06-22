@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { awardFlagQuiz, claimVaultForKid, getVaultClaimantsToday, hasKidClaimedToday, updateKidPoints } from '@/lib/redis'
+import { awardFlagQuiz, claimVaultForKid, getVaultClaimantsToday, hasKidClaimedToday, setStateSpotted, updateKidPoints } from '@/lib/redis'
 import { getTodayRiddle } from '@/lib/riddles'
 import { clearResult, saveResult } from '@/lib/worldcup/store'
 import { savePick } from '@/lib/worldcup/picks'
@@ -68,6 +68,15 @@ export async function completeFlagQuiz(
     revalidatePath('/games')
   }
   return { awarded }
+}
+
+export async function toggleStateSpotted(
+  slug: string,
+  spotted: boolean
+): Promise<void> {
+  await setStateSpotted(slug, spotted)
+  revalidatePath('/games/plates')
+  revalidatePath('/games')
 }
 
 export async function saveWorldCupPick(

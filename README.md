@@ -25,6 +25,7 @@ A mobile-first PWA for gamifying family road trips. Parents award points to kids
 | `/games` | Public | Games hub |
 | `/bonus` | Public | Daily riddle (+5) |
 | `/games/flags` | Public | World Cup flag quiz (+10 once per kid) |
+| `/games/plates` | Public | License-plate game — shared 50-state board |
 | `/worldcup` | Public | 2026 World Cup group-stage predictions |
 | `/worldcup/picks` | Public | Family pick'em — predict scores, earn points |
 | `/celebrate` | Public | Confetti page (`?kid=Name&action=...`) |
@@ -64,6 +65,7 @@ Connect a custom domain in the Vercel dashboard and point a CNAME to \`cname.ver
 - **Admin kids list** — \`app/admin/page.tsx\` and \`app/bonus/BonusClient.tsx\`
 - **Riddles** — \`lib/riddles.ts\` (add/edit as needed, rotates by day of year)
 - **Flag quiz** — \`lib/games/flagquiz.ts\` (accepted spellings per country). Reward (+10, once per kid) tracked in Redis; games live under \`/games\`.
+- **License-plate game** — \`lib/games/states.ts\` (50 states; \`flag: false\` falls back to an abbreviation badge). Shared board in Redis; checking a state asks for confirmation. Icons in \`public/stateflags/<slug>.png\` (NM, NY, PA, UT, VT not yet included).
 - **Route stops** — \`app/map/page.tsx\` (\`STOPS\`/\`ROUTE\`, coordinates in SVG viewBox space)
 - **Map art** — \`public/usmap_outlines.png\`, \`usmap_animals.png\`, \`usmap_labels.png\`
 - **World Cup** — \`lib/worldcup/fixtures.ts\` is the single source of truth for the schedule (match no, date, kickoff, venue, real home/away, and final score once played). Team power ratings live in \`lib/worldcup/data.ts\`. Enter results live from the \`/worldcup\` page; unplayed matches are predicted by \`lib/worldcup/predict.ts\`. The standings page shows a Through / Likely through / Likely out / Out outlook (confirmed from results, "likely" from the projection). Top 2 per group plus the 8 best third-placed teams advance.
