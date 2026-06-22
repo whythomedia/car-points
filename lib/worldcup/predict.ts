@@ -1,16 +1,19 @@
 // Group-stage prediction engine for the 2026 World Cup.
 //
-// Everything here is pure and deterministic: same data in, same table out.
-// Played matches are taken as-is; unplayed matches are predicted from team
-// power ratings, then every match (real + predicted) is fed into the standard
-// 3pts-a-win table. The 48-team format sends the top 2 of each group plus the
-// 8 best third-placed teams to the round of 32.
+// Pure and deterministic. Played matches (from the results map) are taken
+// as-is; unplayed matches are predicted from team power ratings. The 48-team
+// format sends the top 2 of each group plus the 8 best third-placed teams on.
 
-import { GROUPS } from './data'
-import type { Group, Team } from './data'
+import { GROUPS, type Group, type Team } from './data'
+import { fixturesForGroup, matchId } from './fixtures'
+
+// Results keyed by matchId, oriented to the fixture's home team.
+export type Results = Record<string, { ga: number; gb: number }>
 
 export type Match = {
+  no: number
   group: string
+  date: string // ISO YYYY-MM-DD
   home: Team
   away: Team
   ga: number
@@ -68,60 +71,22 @@ export function predictMatch(home: Team, away: Team): Prediction {
   return { ga, gb, confidence, favorite }
 }
 
-// The six round-robin pairings of a four-team group, in a stable order.
-function pairings(teams: Team[]): [Team, Team][] {
-  const out: [Team, Team][] = []
-  for (let i = 0; i < teams.length; i++) {
-    for (let j = i + 1; j < teams.length; j++) {
-      out.push([teams[i], teams[j]])
-    }
-  }
-  return out
-}
-
-function rawResult(group: Group, a: string, b: string) {
-  for (const r of group.results) {
-    if ((r.a === a && r.b === b) || (r.a === b && r.b === a)) return r
-  }
-  return null
-}
-
-// All six matches of a group as either real results or predictions. Played
-// matches keep the real home/away orientation stored in data.ts (home = the
-// team listed first); unplayed matches fall back to the group's listing order.
-export function groupMatches(group: Group): Match[] {
+// A group's six matches, in schedule order, as real results or predictions.
+export function groupMatches(group: Group, results: Results): Match[] {
   const byName = new Map(group.teams.map((t) => [t.name, t]))
-  return pairings(group.teams).map(([home, away]) => {
-    const r = rawResult(group, home.name, away.name)
-    if (r) {
-      return {
-        group: group.id,
-        home: byName.get(r.a)!,
-        away: byName.get(r.b)!,
-        ga: r.ga,
-        gb: r.gb,
-        played: true,
-      }
-    }
+  return fixturesForGroup(group.id).map((fx) => {
+    const home = byName.get(fx.home)!
+    const away = byName.get(fx.away)!
+    const r = results[matchId(group.id, fx.home, fx.away)]
+    const base = { no: fx.no, group: group.id, date: fx.date, home, away }
+    if (r) return { ...base, ga: r.ga, gb: r.gb, played: true }
     const p = predictMatch(home, away)
-    return { group: group.id, home, away, ga: p.ga, gb: p.gb, played: false }
+    return { ...base, ga: p.ga, gb: p.gb, played: false }
   })
 }
 
 function blankStanding(team: Team, group: string): Standing {
-  return {
-    team,
-    group,
-    played: 0,
-    won: 0,
-    drawn: 0,
-    lost: 0,
-    gf: 0,
-    ga: 0,
-    gd: 0,
-    points: 0,
-    rank: 0,
-  }
+  return { team, group, played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, gd: 0, points: 0, rank: 0 }
 }
 
 function applyMatch(table: Map<string, Standing>, m: Match) {
@@ -160,12 +125,6 @@ function compareStandings(a: Standing, b: Standing): number {
   return a.team.name.localeCompare(b.team.name)
 }
 
-export type GroupProjection = {
-  id: string
-  matches: Match[]
-  table: Standing[]
-}
-
 function buildStandings(group: Group, matches: Match[]): Standing[] {
   const table = new Map<string, Standing>()
   for (const team of group.teams) table.set(team.name, blankStanding(team, group.id))
@@ -177,26 +136,30 @@ function buildStandings(group: Group, matches: Match[]): Standing[] {
   return ordered
 }
 
-export function projectGroup(group: Group): GroupProjection {
-  const matches = groupMatches(group)
+export type GroupProjection = {
+  id: string
+  matches: Match[]
+  table: Standing[]
+}
+
+export function projectGroup(group: Group, results: Results): GroupProjection {
+  const matches = groupMatches(group, results)
   return { id: group.id, matches, table: buildStandings(group, matches) }
 }
 
 // Standings from games actually played so far (no predictions).
-export function actualGroupTable(group: Group): Standing[] {
-  return buildStandings(group, groupMatches(group).filter((m) => m.played))
+export function actualGroupTable(group: Group, results: Results): Standing[] {
+  return buildStandings(group, groupMatches(group, results).filter((m) => m.played))
 }
 
 export type Tournament = {
   groups: GroupProjection[]
-  // The 12 third-placed teams ranked head-to-head; the top 8 advance.
   thirdsRace: Standing[]
-  // Names of the 8 third-placed teams projected to advance.
   qualifyingThirds: Set<string>
 }
 
-export function projectTournament(groups: Group[] = GROUPS): Tournament {
-  const projections = groups.map(projectGroup)
+export function projectTournament(groups: Group[], results: Results): Tournament {
+  const projections = groups.map((g) => projectGroup(g, results))
 
   const thirdsRace = projections
     .map((g) => g.table[2])
@@ -204,7 +167,6 @@ export function projectTournament(groups: Group[] = GROUPS): Tournament {
     .sort(compareStandings)
 
   const qualifyingThirds = new Set(thirdsRace.slice(0, 8).map((s) => s.team.name))
-
   return { groups: projections, thirdsRace, qualifyingThirds }
 }
 
@@ -212,10 +174,9 @@ export function projectTournament(groups: Group[] = GROUPS): Tournament {
 
 export type Bucket = 'through' | 'likely-through' | 'likely-out' | 'out'
 
-// Points each team has actually banked so far.
-function actualPoints(group: Group): Map<string, number> {
+function actualPoints(group: Group, results: Results): Map<string, number> {
   const pts = new Map<string, number>(group.teams.map((t) => [t.name, 0]))
-  for (const m of groupMatches(group).filter((m) => m.played)) {
+  for (const m of groupMatches(group, results).filter((m) => m.played)) {
     if (m.ga > m.gb) pts.set(m.home.name, pts.get(m.home.name)! + 3)
     else if (m.ga < m.gb) pts.set(m.away.name, pts.get(m.away.name)! + 3)
     else {
@@ -226,9 +187,9 @@ function actualPoints(group: Group): Map<string, number> {
   return pts
 }
 
-function lossesByTeam(group: Group): Map<string, number> {
+function lossesByTeam(group: Group, results: Results): Map<string, number> {
   const losses = new Map<string, number>(group.teams.map((t) => [t.name, 0]))
-  for (const m of groupMatches(group).filter((m) => m.played)) {
+  for (const m of groupMatches(group, results).filter((m) => m.played)) {
     if (m.ga > m.gb) losses.set(m.away.name, losses.get(m.away.name)! + 1)
     else if (m.ga < m.gb) losses.set(m.home.name, losses.get(m.home.name)! + 1)
   }
@@ -239,9 +200,9 @@ function lossesByTeam(group: Group): Map<string, number> {
 // group's remaining games, at most one other team can finish level-or-above on
 // points (so no tiebreaker can drop them to 3rd). Brute-forced — a group has at
 // most 4 games left (3^4 = 81 combinations).
-export function confirmedThrough(group: Group): Set<string> {
-  const remaining = groupMatches(group).filter((m) => !m.played)
-  const base = actualPoints(group)
+export function confirmedThrough(group: Group, results: Results): Set<string> {
+  const remaining = groupMatches(group, results).filter((m) => !m.played)
+  const base = actualPoints(group, results)
   const safe = new Map<string, boolean>(group.teams.map((t) => [t.name, true]))
 
   const combos = 3 ** remaining.length
@@ -279,15 +240,18 @@ export type GroupAnalysis = {
 
 // Confirmed status comes from real results only; "likely" leans on the model's
 // projection of the remaining games (top 2, plus the 8 best third-placed).
-export function analyzeTournament(groups: Group[] = GROUPS): { groups: GroupAnalysis[] } {
-  const proj = projectTournament(groups)
+export function analyzeTournament(
+  results: Results,
+  groups: Group[] = GROUPS
+): { groups: GroupAnalysis[] } {
+  const proj = projectTournament(groups, results)
   const projRank = new Map<string, number>()
   for (const g of proj.groups) for (const s of g.table) projRank.set(s.team.name, s.rank)
 
   const analyses = groups.map((group): GroupAnalysis => {
-    const table = actualGroupTable(group)
-    const through = confirmedThrough(group)
-    const losses = lossesByTeam(group)
+    const table = actualGroupTable(group, results)
+    const through = confirmedThrough(group, results)
+    const losses = lossesByTeam(group, results)
     const buckets = new Map<string, Bucket>()
 
     for (const s of table) {

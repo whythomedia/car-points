@@ -1,5 +1,6 @@
 import Link from 'next/link'
-import { getGroupsWithResults, matchId } from '@/lib/worldcup/store'
+import { GROUPS } from '@/lib/worldcup/data'
+import { getResults, matchId } from '@/lib/worldcup/store'
 import { groupMatches } from '@/lib/worldcup/predict'
 import { GROUP_COLORS, PREDICTORS } from '@/lib/worldcup/brand'
 import { buildLeaderboard, getAllPicks, type GradedMatch } from '@/lib/worldcup/picks'
@@ -10,11 +11,13 @@ export const metadata = {
 }
 
 export default async function PicksPage() {
-  const [groups, picks] = await Promise.all([getGroupsWithResults(), getAllPicks()])
+  const [results, picks] = await Promise.all([getResults(), getAllPicks()])
 
-  const matches: PickMatch[] = groups.flatMap((group) =>
-    groupMatches(group).map((m) => ({
+  const matches: PickMatch[] = GROUPS.flatMap((group) =>
+    groupMatches(group, results).map((m) => ({
       matchId: matchId(group.id, m.home.name, m.away.name),
+      no: m.no,
+      date: m.date,
       group: group.id,
       groupColor: GROUP_COLORS[group.id],
       homeName: m.home.name,
@@ -49,12 +52,7 @@ export default async function PicksPage() {
         </Link>
       </div>
 
-      <PicksClient
-        users={PREDICTORS}
-        matches={matches}
-        picks={picks}
-        leaderboard={leaderboard}
-      />
+      <PicksClient users={PREDICTORS} matches={matches} picks={picks} leaderboard={leaderboard} />
     </div>
   )
 }

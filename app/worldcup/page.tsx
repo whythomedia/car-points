@@ -1,5 +1,6 @@
 import Link from 'next/link'
-import { getGroupsWithResults } from '@/lib/worldcup/store'
+import { GROUPS } from '@/lib/worldcup/data'
+import { getResults } from '@/lib/worldcup/store'
 import { analyzeTournament, groupMatches, type Bucket, type Standing } from '@/lib/worldcup/predict'
 import { GROUP_COLORS, textOn } from '@/lib/worldcup/brand'
 import TeamFlag from './TeamFlag'
@@ -49,10 +50,10 @@ function StandingRow({ s, bucket }: { s: Standing; bucket: Bucket }) {
 }
 
 export default async function WorldCupPage() {
-  const groups = await getGroupsWithResults()
-  const { groups: analysis } = analyzeTournament(groups)
+  const results = await getResults()
+  const { groups: analysis } = analyzeTournament(results)
 
-  const allMatches = groups.flatMap((g) => groupMatches(g))
+  const allMatches = GROUPS.flatMap((g) => groupMatches(g, results))
   const played = allMatches.filter((m) => m.played).length
 
   const editable: EditableMatch[] = allMatches

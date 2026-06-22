@@ -9,6 +9,8 @@ import TeamFlag from '../TeamFlag'
 
 export type PickMatch = {
   matchId: string
+  no: number
+  date: string // ISO YYYY-MM-DD
   group: string
   groupColor: string
   homeName: string
@@ -16,7 +18,7 @@ export type PickMatch = {
   awayName: string
   awayFlag: string
   played: boolean
-  ga: number // actual if played, else model prediction (a hint)
+  ga: number // actual score when played; unused otherwise
   gb: number
 }
 
@@ -85,6 +87,7 @@ function UpcomingRow({
 
   return (
     <div className="flex items-center gap-2 py-2 text-sm">
+      <GroupChip group={match.group} color={match.groupColor} />
       <span className="flex flex-1 items-center justify-end gap-1.5 text-right text-slate-700 dark:text-slate-200">
         {match.homeName} <TeamFlag name={match.homeName} emoji={match.homeFlag} size={18} />
       </span>
@@ -139,6 +142,7 @@ function CompletedRow({
   return (
     <div className="py-2 text-sm">
       <div className="flex items-center gap-2">
+        <GroupChip group={match.group} color={match.groupColor} />
         <span
           className={`flex flex-1 items-center justify-end gap-1.5 text-right ${winner === 'home' ? 'font-black text-slate-900 dark:text-white' : 'text-slate-600 dark:text-slate-300'}`}
         >
@@ -185,14 +189,27 @@ function CompletedRow({
   )
 }
 
-function byGroup(matches: PickMatch[]) {
+// Group matches by calendar day, earliest day first; within a day, in
+// kickoff order (match number).
+function byDay(matches: PickMatch[]): [string, PickMatch[]][] {
   const map = new Map<string, PickMatch[]>()
   for (const m of matches) {
-    const arr = map.get(m.group) ?? []
+    const arr = map.get(m.date) ?? []
     arr.push(m)
-    map.set(m.group, arr)
+    map.set(m.date, arr)
   }
-  return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]))
+  return [...map.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([date, ms]) => [date, ms.sort((x, y) => x.no - y.no)])
+}
+
+function formatDay(iso: string): string {
+  return new Date(iso + 'T12:00:00Z').toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    timeZone: 'UTC',
+  })
 }
 
 export default function PicksClient({ users, matches, picks, leaderboard }: Props) {
@@ -285,15 +302,12 @@ export default function PicksClient({ users, matches, picks, leaderboard }: Prop
           </p>
         ) : (
           <div className="space-y-4">
-            {byGroup(upcoming).map(([group, ms]) => (
+            {byDay(upcoming).map(([date, ms]) => (
               <div
-                key={group}
+                key={date}
                 className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800"
               >
-                <div className="mb-1 flex items-center gap-2">
-                  <GroupChip group={group} color={ms[0].groupColor} />
-                  <span className="font-bold text-slate-900 dark:text-white">Group {group}</span>
-                </div>
+                <div className="mb-1 font-bold text-slate-900 dark:text-white">{formatDay(date)}</div>
                 <div className="divide-y divide-slate-100 dark:divide-slate-700">
                   {ms.map((m) => {
                     const pickers = picks[m.matchId] ?? {}
@@ -327,15 +341,12 @@ export default function PicksClient({ users, matches, picks, leaderboard }: Prop
             </span>
           </h2>
           <div className="space-y-4">
-            {byGroup(completed).map(([group, ms]) => (
+            {byDay(completed).map(([date, ms]) => (
               <div
-                key={group}
+                key={date}
                 className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800"
               >
-                <div className="mb-1 flex items-center gap-2">
-                  <GroupChip group={group} color={ms[0].groupColor} />
-                  <span className="font-bold text-slate-900 dark:text-white">Group {group}</span>
-                </div>
+                <div className="mb-1 font-bold text-slate-900 dark:text-white">{formatDay(date)}</div>
                 <div className="divide-y divide-slate-100 dark:divide-slate-700">
                   {ms.map((m) => (
                     <CompletedRow key={m.matchId} match={m} users={users} picks={picks} />

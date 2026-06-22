@@ -1,13 +1,10 @@
-// 2026 FIFA World Cup — group-stage data.
+// 2026 FIFA World Cup — teams and power ratings.
 //
 // Ratings are a simple 0–100 power estimate used only to PREDICT unplayed
 // matches; they have no effect on results already entered. Tweak them freely.
 //
-// `results` holds matches that have actually been played (scores as of the
-// last update). Any of the six pairings in a group that is NOT listed here is
-// treated as "not yet played" and gets predicted by the engine.
-//
-// Last updated from real results: 2026-06-21.
+// Fixtures, dates, and results live in `fixtures.ts` (the single source of
+// truth for matches). Team order here is stable — match ids derive from it.
 
 export type Team = {
   name: string
@@ -15,17 +12,9 @@ export type Team = {
   rating: number
 }
 
-export type PlayedResult = {
-  a: string // team name
-  b: string // team name
-  ga: number
-  gb: number
-}
-
 export type Group = {
   id: string
   teams: Team[]
-  results: PlayedResult[]
 }
 
 export const GROUPS: Group[] = [
@@ -37,12 +26,6 @@ export const GROUPS: Group[] = [
       { name: 'Czechia', flag: '🇨🇿', rating: 67 },
       { name: 'South Africa', flag: '🇿🇦', rating: 62 },
     ],
-    results: [
-      { a: 'Mexico', b: 'South Africa', ga: 2, gb: 0 },
-      { a: 'South Korea', b: 'Czechia', ga: 2, gb: 1 },
-      { a: 'Czechia', b: 'South Africa', ga: 1, gb: 1 },
-      { a: 'Mexico', b: 'South Korea', ga: 1, gb: 0 },
-    ],
   },
   {
     id: 'B',
@@ -51,12 +34,6 @@ export const GROUPS: Group[] = [
       { name: 'Canada', flag: '🇨🇦', rating: 73 },
       { name: 'Bosnia & Herzegovina', flag: '🇧🇦', rating: 65 },
       { name: 'Qatar', flag: '🇶🇦', rating: 60 },
-    ],
-    results: [
-      { a: 'Canada', b: 'Bosnia & Herzegovina', ga: 1, gb: 1 },
-      { a: 'Switzerland', b: 'Qatar', ga: 1, gb: 1 },
-      { a: 'Switzerland', b: 'Bosnia & Herzegovina', ga: 4, gb: 1 },
-      { a: 'Canada', b: 'Qatar', ga: 6, gb: 0 },
     ],
   },
   {
@@ -67,12 +44,6 @@ export const GROUPS: Group[] = [
       { name: 'Scotland', flag: '🏴󠁧󠁢󠁳󠁣󠁴󠁿', rating: 71 },
       { name: 'Haiti', flag: '🇭🇹', rating: 56 },
     ],
-    results: [
-      { a: 'Brazil', b: 'Morocco', ga: 1, gb: 1 },
-      { a: 'Scotland', b: 'Haiti', ga: 1, gb: 0 },
-      { a: 'Scotland', b: 'Morocco', ga: 0, gb: 1 },
-      { a: 'Brazil', b: 'Haiti', ga: 3, gb: 0 },
-    ],
   },
   {
     id: 'D',
@@ -81,12 +52,6 @@ export const GROUPS: Group[] = [
       { name: 'Türkiye', flag: '🇹🇷', rating: 74 },
       { name: 'Paraguay', flag: '🇵🇾', rating: 70 },
       { name: 'Australia', flag: '🇦🇺', rating: 67 },
-    ],
-    results: [
-      { a: 'United States', b: 'Paraguay', ga: 4, gb: 1 },
-      { a: 'Australia', b: 'Türkiye', ga: 2, gb: 0 },
-      { a: 'United States', b: 'Australia', ga: 2, gb: 0 },
-      { a: 'Türkiye', b: 'Paraguay', ga: 0, gb: 1 },
     ],
   },
   {
@@ -97,12 +62,6 @@ export const GROUPS: Group[] = [
       { name: 'Ivory Coast', flag: '🇨🇮', rating: 71 },
       { name: 'Curaçao', flag: '🇨🇼', rating: 54 },
     ],
-    results: [
-      { a: 'Germany', b: 'Curaçao', ga: 7, gb: 1 },
-      { a: 'Ivory Coast', b: 'Ecuador', ga: 1, gb: 0 },
-      { a: 'Germany', b: 'Ivory Coast', ga: 2, gb: 1 },
-      { a: 'Ecuador', b: 'Curaçao', ga: 0, gb: 0 },
-    ],
   },
   {
     id: 'F',
@@ -111,12 +70,6 @@ export const GROUPS: Group[] = [
       { name: 'Japan', flag: '🇯🇵', rating: 77 },
       { name: 'Sweden', flag: '🇸🇪', rating: 75 },
       { name: 'Tunisia', flag: '🇹🇳', rating: 64 },
-    ],
-    results: [
-      { a: 'Netherlands', b: 'Japan', ga: 2, gb: 2 },
-      { a: 'Sweden', b: 'Tunisia', ga: 5, gb: 1 },
-      { a: 'Netherlands', b: 'Sweden', ga: 5, gb: 1 },
-      { a: 'Japan', b: 'Tunisia', ga: 4, gb: 0 },
     ],
   },
   {
@@ -127,12 +80,6 @@ export const GROUPS: Group[] = [
       { name: 'Egypt', flag: '🇪🇬', rating: 69 },
       { name: 'New Zealand', flag: '🇳🇿', rating: 60 },
     ],
-    results: [
-      { a: 'Belgium', b: 'Egypt', ga: 1, gb: 1 },
-      { a: 'Iran', b: 'New Zealand', ga: 2, gb: 2 },
-      { a: 'Belgium', b: 'Iran', ga: 0, gb: 0 },
-      { a: 'Egypt', b: 'New Zealand', ga: 3, gb: 1 },
-    ],
   },
   {
     id: 'H',
@@ -141,12 +88,6 @@ export const GROUPS: Group[] = [
       { name: 'Uruguay', flag: '🇺🇾', rating: 81 },
       { name: 'Saudi Arabia', flag: '🇸🇦', rating: 62 },
       { name: 'Cabo Verde', flag: '🇨🇻', rating: 58 },
-    ],
-    results: [
-      { a: 'Spain', b: 'Cabo Verde', ga: 0, gb: 0 },
-      { a: 'Saudi Arabia', b: 'Uruguay', ga: 1, gb: 1 },
-      { a: 'Spain', b: 'Saudi Arabia', ga: 4, gb: 0 },
-      { a: 'Uruguay', b: 'Cabo Verde', ga: 2, gb: 2 },
     ],
   },
   {
@@ -157,10 +98,6 @@ export const GROUPS: Group[] = [
       { name: 'Senegal', flag: '🇸🇳', rating: 79 },
       { name: 'Iraq', flag: '🇮🇶', rating: 60 },
     ],
-    results: [
-      { a: 'France', b: 'Senegal', ga: 3, gb: 1 },
-      { a: 'Norway', b: 'Iraq', ga: 4, gb: 1 },
-    ],
   },
   {
     id: 'J',
@@ -169,10 +106,6 @@ export const GROUPS: Group[] = [
       { name: 'Austria', flag: '🇦🇹', rating: 75 },
       { name: 'Algeria', flag: '🇩🇿', rating: 71 },
       { name: 'Jordan', flag: '🇯🇴', rating: 58 },
-    ],
-    results: [
-      { a: 'Argentina', b: 'Algeria', ga: 3, gb: 0 },
-      { a: 'Austria', b: 'Jordan', ga: 3, gb: 1 },
     ],
   },
   {
@@ -183,10 +116,6 @@ export const GROUPS: Group[] = [
       { name: 'DR Congo', flag: '🇨🇩', rating: 67 },
       { name: 'Uzbekistan', flag: '🇺🇿', rating: 63 },
     ],
-    results: [
-      { a: 'Portugal', b: 'DR Congo', ga: 1, gb: 1 },
-      { a: 'Colombia', b: 'Uzbekistan', ga: 3, gb: 1 },
-    ],
   },
   {
     id: 'L',
@@ -196,9 +125,13 @@ export const GROUPS: Group[] = [
       { name: 'Ghana', flag: '🇬🇭', rating: 69 },
       { name: 'Panama', flag: '🇵🇦', rating: 60 },
     ],
-    results: [
-      { a: 'England', b: 'Croatia', ga: 4, gb: 2 },
-      { a: 'Ghana', b: 'Panama', ga: 1, gb: 0 },
-    ],
   },
 ]
+
+export function teamByName(name: string): Team | undefined {
+  for (const g of GROUPS) {
+    const t = g.teams.find((t) => t.name === name)
+    if (t) return t
+  }
+  return undefined
+}

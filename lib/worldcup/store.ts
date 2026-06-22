@@ -1,54 +1,34 @@
 import { redis } from '../redis'
-import { GROUPS } from './data'
-import type { Group } from './data'
+import { FIXTURE_BY_ID, matchId } from './fixtures'
 
-// Actual results the family enters during the trip are layered on top of the
-// seeded data in `data.ts`. They're keyed by a stable match id so an entry
-// survives even if the seed data is later edited.
+// Results are keyed by matchId and oriented to the fixture's home team. The
+// schedule (fixtures.ts) supplies the base scores; anything the family enters
+// during the trip is layered on top in Redis.
 
-export type Override = { ga: number; gb: number }
-type Overrides = Record<string, Override>
+export type Result = { ga: number; gb: number }
+type Results = Record<string, Result>
 
 const KEY = 'worldcup:results'
 
-// Canonical id for a pairing: group + the two teams in their group order, so
-// the same match maps to one id no matter which side is passed first.
-export function matchId(groupId: string, a: string, b: string): string {
-  const group = GROUPS.find((g) => g.id === groupId)
-  const order = group ? group.teams.map((t) => t.name) : [a, b]
-  const [first, second] = [a, b].sort((x, y) => order.indexOf(x) - order.indexOf(y))
-  return `${groupId}|${first}|${second}`
-}
+// Re-export so existing imports keep working.
+export { matchId }
 
-async function getOverrides(): Promise<Overrides> {
+async function getOverrides(): Promise<Results> {
   try {
-    return (await redis.get<Overrides>(KEY)) ?? {}
+    return (await redis.get<Results>(KEY)) ?? {}
   } catch {
-    // Offline / Redis unavailable: still show predictions from seeded data.
+    // Offline / Redis unavailable: fall back to the scheduled results only.
     return {}
   }
 }
 
-// GROUPS with any saved actual results merged into each group's result list.
-export async function getGroupsWithResults(): Promise<Group[]> {
+export async function getResults(): Promise<Results> {
+  const base: Results = {}
+  for (const [id, f] of FIXTURE_BY_ID) {
+    if (f.ga !== null && f.gb !== null) base[id] = { ga: f.ga, gb: f.gb }
+  }
   const overrides = await getOverrides()
-  if (Object.keys(overrides).length === 0) return GROUPS
-
-  return GROUPS.map((group) => {
-    const results = [...group.results]
-    for (const [home, away] of pairs(group.teams.map((t) => t.name))) {
-      const ov = overrides[matchId(group.id, home, away)]
-      if (!ov) continue
-      const existing = results.findIndex(
-        (r) =>
-          (r.a === home && r.b === away) || (r.a === away && r.b === home)
-      )
-      const entry = { a: home, b: away, ga: ov.ga, gb: ov.gb }
-      if (existing >= 0) results[existing] = entry
-      else results.push(entry)
-    }
-    return { ...group, results }
-  })
+  return { ...base, ...overrides }
 }
 
 export async function saveResult(
@@ -58,8 +38,12 @@ export async function saveResult(
   ga: number,
   gb: number
 ): Promise<void> {
+  const id = matchId(groupId, a, b)
+  const f = FIXTURE_BY_ID.get(id)
+  // Always store oriented to the fixture's home team.
+  const stored = f && f.home === b ? { ga: gb, gb: ga } : { ga, gb }
   const overrides = await getOverrides()
-  overrides[matchId(groupId, a, b)] = { ga, gb }
+  overrides[id] = stored
   await redis.set(KEY, overrides)
 }
 
@@ -67,11 +51,4 @@ export async function clearResult(groupId: string, a: string, b: string): Promis
   const overrides = await getOverrides()
   delete overrides[matchId(groupId, a, b)]
   await redis.set(KEY, overrides)
-}
-
-function pairs(names: string[]): [string, string][] {
-  const out: [string, string][] = []
-  for (let i = 0; i < names.length; i++)
-    for (let j = i + 1; j < names.length; j++) out.push([names[i], names[j]])
-  return out
 }
