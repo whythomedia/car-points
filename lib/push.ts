@@ -23,20 +23,22 @@ export type PushPayload = {
   tag?: string
 }
 
-// Send a notification to every subscribed device. Fire-and-forget friendly:
-// never throws, and prunes subscriptions that have expired (404/410).
-export async function sendPushToAll(payload: PushPayload): Promise<void> {
-  if (!ensureConfigured()) return
+// Send a notification to every subscribed device. Never throws; prunes
+// subscriptions that have expired (404/410). Returns how many were delivered.
+export async function sendPushToAll(payload: PushPayload): Promise<number> {
+  if (!ensureConfigured()) return 0
   const subs = await getPushSubscriptions()
-  if (subs.length === 0) return
+  if (subs.length === 0) return 0
 
   const data = JSON.stringify(payload)
   const dead: string[] = []
+  let sent = 0
 
   await Promise.all(
     subs.map(async (sub: PushSub) => {
       try {
         await webpush.sendNotification(sub, data)
+        sent++
       } catch (err: unknown) {
         const status = (err as { statusCode?: number })?.statusCode
         if (status === 404 || status === 410) dead.push(sub.endpoint)
@@ -45,10 +47,11 @@ export async function sendPushToAll(payload: PushPayload): Promise<void> {
   )
 
   await removePushSubscriptions(dead)
+  return sent
 }
 
-export function notifyStateSpotted(stateName: string, count: number, total: number): Promise<void> {
-  return sendPushToAll({
+export async function notifyStateSpotted(stateName: string, count: number, total: number): Promise<void> {
+  await sendPushToAll({
     title: '🚗 New license plate!',
     body:
       count >= total
@@ -59,7 +62,7 @@ export function notifyStateSpotted(stateName: string, count: number, total: numb
   })
 }
 
-export function notifyResult(
+export async function notifyResult(
   matchLabel: string,
   leaderboard: { name: string; points: number }[]
 ): Promise<void> {
@@ -67,7 +70,7 @@ export function notifyResult(
     .slice(0, 4)
     .map((r) => `${r.name} ${r.points}`)
     .join(' · ')
-  return sendPushToAll({
+  await sendPushToAll({
     title: `⚽ Final: ${matchLabel}`,
     body: standings ? `Leaderboard — ${standings}` : 'Tap to see the updated picks.',
     url: '/worldcup/picks',

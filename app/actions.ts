@@ -20,7 +20,7 @@ import { groupMatches } from '@/lib/worldcup/predict'
 import { GROUPS } from '@/lib/worldcup/data'
 import { matchId } from '@/lib/worldcup/fixtures'
 import { STATES } from '@/lib/games/states'
-import { notifyResult, notifyStateSpotted } from '@/lib/push'
+import { notifyResult, notifyStateSpotted, sendPushToAll } from '@/lib/push'
 
 export async function updateScore(kidName: string, delta: number): Promise<void> {
   await updateKidPoints(kidName, delta)
@@ -125,6 +125,20 @@ export async function toggleStateSpotted(
 
 export async function subscribeToPush(sub: PushSub): Promise<void> {
   await savePushSubscription(sub)
+}
+
+// Broadcast a custom message to every subscribed device (admin only).
+export async function sendAdminMessage(
+  password: string,
+  message: string
+): Promise<{ ok: boolean; sent?: number; error?: string }> {
+  if (password !== (process.env.ADMIN_PASSWORD ?? 'space')) {
+    return { ok: false, error: 'Not authorized.' }
+  }
+  const body = message.trim()
+  if (!body) return { ok: false, error: 'Type a message first.' }
+  const sent = await sendPushToAll({ title: '📣 Car Points', body, url: '/', tag: 'admin' })
+  return { ok: true, sent }
 }
 
 export async function unsubscribeFromPush(endpoint: string): Promise<void> {

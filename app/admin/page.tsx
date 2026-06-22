@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { checkAdminPassword, updateScore } from '@/app/actions'
+import { checkAdminPassword, sendAdminMessage, updateScore } from '@/app/actions'
 import { useRouter } from 'next/navigation'
 
 const KIDS = ['Owen', 'Zoe', 'Max', 'Emma']
@@ -39,7 +39,22 @@ export default function AdminPage() {
   const [password, setPassword] = useState('')
   const [authError, setAuthError] = useState('')
   const [feedback, setFeedback] = useState<Record<string, string>>({})
+  const [message, setMessage] = useState('')
+  const [msgFeedback, setMsgFeedback] = useState('')
   const [isPending, startTransition] = useTransition()
+
+  function handleSendMessage() {
+    startTransition(async () => {
+      const res = await sendAdminMessage(password, message)
+      if (res.ok) {
+        setMessage('')
+        setMsgFeedback(res.sent ? `Sent to ${res.sent} device${res.sent === 1 ? '' : 's'} ✓` : 'No devices subscribed yet')
+      } else {
+        setMsgFeedback(res.error ?? 'Could not send.')
+      }
+      setTimeout(() => setMsgFeedback(''), 3000)
+    })
+  }
 
   function handlePasswordSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -125,6 +140,34 @@ export default function AdminPage() {
             </div>
           </div>
         ))}
+      </div>
+
+      {/* Broadcast a message */}
+      <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
+        <div className="mb-2 flex items-center justify-between">
+          <span className="font-bold text-slate-900 dark:text-white">📣 Send a message</span>
+          {msgFeedback && (
+            <span className="text-sm font-semibold text-teal-600 dark:text-teal-400">{msgFeedback}</span>
+          )}
+        </div>
+        <p className="mb-3 text-xs text-slate-500 dark:text-slate-400">
+          Pushes to everyone who turned on alerts (also handy as a test).
+        </p>
+        <textarea
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          placeholder="Lunch in 10 minutes! 🍔"
+          rows={2}
+          maxLength={140}
+          className="w-full resize-none rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 placeholder-slate-400 focus:border-teal-500 focus:outline-none dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
+        />
+        <button
+          onClick={handleSendMessage}
+          disabled={isPending || !message.trim()}
+          className="mt-2 w-full rounded-xl bg-teal-600 py-3 font-black text-white hover:bg-teal-500 disabled:opacity-50"
+        >
+          {isPending ? 'Sending…' : 'Send to all devices'}
+        </button>
       </div>
     </div>
   )
