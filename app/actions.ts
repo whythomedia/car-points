@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { claimVaultForKid, getVaultClaimantsToday, hasKidClaimedToday, updateKidPoints } from '@/lib/redis'
 import { getTodayRiddle } from '@/lib/riddles'
 import { clearResult, saveResult } from '@/lib/worldcup/store'
+import { savePick } from '@/lib/worldcup/picks'
 
 export async function updateScore(kidName: string, delta: number): Promise<void> {
   await updateKidPoints(kidName, delta)
@@ -56,4 +57,15 @@ export async function clearWorldCupResult(
 ): Promise<void> {
   await clearResult(groupId, a, b)
   revalidatePath('/worldcup')
+}
+
+export async function saveWorldCupPick(
+  matchId: string,
+  user: string,
+  ga: number,
+  gb: number
+): Promise<void> {
+  const clean = (n: number) => Math.max(0, Math.min(20, Math.round(Number(n) || 0)))
+  await savePick(matchId, user, clean(ga), clean(gb))
+  revalidatePath('/worldcup/picks')
 }

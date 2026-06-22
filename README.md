@@ -24,6 +24,7 @@ A mobile-first PWA for gamifying family road trips. Parents award points to kids
 | `/map` | Public | Trip route map |
 | `/bonus` | Public | Daily riddle vault |
 | `/worldcup` | Public | 2026 World Cup group-stage predictions |
+| `/worldcup/picks` | Public | Family pick'em — predict scores, earn points |
 | `/celebrate` | Public | Confetti page (`?kid=Name&action=...`) |
 | `/admin` | Password | Award/deduct points per kid |
 
@@ -63,6 +64,7 @@ Connect a custom domain in the Vercel dashboard and point a CNAME to \`cname.ver
 - **Route stops** — \`app/map/page.tsx\` (\`STOPS\` array, coordinates in SVG viewBox space)
 - **Map art** — \`public/usmap_outlines.png\`, \`usmap_animals.png\`, \`usmap_labels.png\`
 - **World Cup** — \`lib/worldcup/data.ts\` (groups, team power ratings, played results). Edit \`results\` as matches finish, or enter them live from the \`/worldcup\` page. Unplayed matches are predicted by \`lib/worldcup/predict.ts\`; top 2 per group plus the 8 best third-placed teams advance.
+- **Family pick'em** — \`/worldcup/picks\`. Each person predicts a score per match; exact score = 3 pts, correct outcome = 1 pt. Players and their accent colors live in \`lib/worldcup/brand.ts\` (\`PREDICTORS\`); group colors and the \`text_on\` legibility rule come from the same module (per the project style guide). Picks and scores are stored in Redis.
 
 ## PWA
 

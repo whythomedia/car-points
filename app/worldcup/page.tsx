@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { getGroupsWithResults } from '@/lib/worldcup/store'
 import {
   advancement,
@@ -87,11 +88,19 @@ export default async function WorldCupPage() {
   return (
     <div className="min-h-screen px-4 pt-6">
       {/* Header */}
-      <div className="mb-4">
-        <h1 className="text-2xl font-black text-slate-900 dark:text-white">🏆 World Cup 2026</h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400">
-          {played} of {total} matches played · the rest are our predictions
-        </p>
+      <div className="mb-4 flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-black text-slate-900 dark:text-white">🏆 World Cup 2026</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            {played} of {total} matches played · the rest are our predictions
+          </p>
+        </div>
+        <Link
+          href="/worldcup/picks"
+          className="shrink-0 rounded-full bg-teal-600 px-4 py-2 text-sm font-bold text-white hover:bg-teal-500"
+        >
+          Family picks →
+        </Link>
       </div>
 
       {/* Legend */}
