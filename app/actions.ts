@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { claimVaultForKid, getVaultClaimantsToday, hasKidClaimedToday, updateKidPoints } from '@/lib/redis'
+import { awardFlagQuiz, claimVaultForKid, getVaultClaimantsToday, hasKidClaimedToday, updateKidPoints } from '@/lib/redis'
 import { getTodayRiddle } from '@/lib/riddles'
 import { clearResult, saveResult } from '@/lib/worldcup/store'
 import { savePick } from '@/lib/worldcup/picks'
@@ -57,6 +57,17 @@ export async function clearWorldCupResult(
 ): Promise<void> {
   await clearResult(groupId, a, b)
   revalidatePath('/worldcup')
+}
+
+export async function completeFlagQuiz(
+  kidName: string
+): Promise<{ awarded: boolean }> {
+  const awarded = await awardFlagQuiz(kidName)
+  if (awarded) {
+    revalidatePath('/')
+    revalidatePath('/games')
+  }
+  return { awarded }
 }
 
 export async function saveWorldCupPick(

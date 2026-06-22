@@ -51,3 +51,24 @@ export async function claimVaultForKid(kidName: string): Promise<void> {
     await updateKidPoints(kidName, 5)
   }
 }
+
+// Flag quiz — a one-time +10 per kid for naming every World Cup flag.
+const FLAG_QUIZ_KEY = 'flagquiz:winners'
+
+export async function getFlagQuizWinners(): Promise<string[]> {
+  return (await redis.get<string[]>(FLAG_QUIZ_KEY)) ?? []
+}
+
+export async function hasKidWonFlagQuiz(kidName: string): Promise<boolean> {
+  return (await getFlagQuizWinners()).includes(kidName)
+}
+
+// Awards +10 the first time a kid finishes the flag quiz. Returns true if the
+// points were granted, false if they'd already earned it.
+export async function awardFlagQuiz(kidName: string): Promise<boolean> {
+  const winners = await getFlagQuizWinners()
+  if (winners.includes(kidName)) return false
+  await redis.set(FLAG_QUIZ_KEY, [...winners, kidName])
+  await updateKidPoints(kidName, 10)
+  return true
+}

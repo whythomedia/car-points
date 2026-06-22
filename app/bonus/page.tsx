@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { getVaultClaimantsToday } from '@/lib/redis'
 import { getTodayRiddle } from '@/lib/riddles'
 import BonusClient from './BonusClient'
@@ -10,9 +11,14 @@ export default async function BonusPage() {
 
   return (
     <div className="min-h-screen px-4 pt-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-black text-slate-900 dark:text-white">Daily Vault</h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400">Solve the riddle. Claim 5 points.</p>
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-black text-slate-900 dark:text-white">Daily Riddle</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Solve the riddle. Claim 5 points.</p>
+        </div>
+        <Link href="/games" className="text-sm text-slate-500 hover:text-teal-600 dark:text-slate-400 dark:hover:text-teal-400">
+          ← Games
+        </Link>
       </div>
 
       {/* Riddle card — always visible */}

@@ -5,9 +5,9 @@ A mobile-first PWA for gamifying family road trips. Parents award points to kids
 ## How it works
 
 - **Scoreboard** — Public dashboard showing each kid's current point total. No login required.
-- **Daily Vault** — Once per day, any kid can claim +5 points by solving a riddle. First correct answer wins; vault locks until midnight.
+- **Games** — Earn bonus points: a daily riddle (+5/kid) and a World Cup flag quiz (+10 once per kid for naming every flag).
 - **Admin panel** — Password-protected. Parents can add or deduct points in any increment. Awards trigger a confetti celebration page.
-- **Map** — Interactive US map showing the trip route with toggleable art layers (state outlines, animals, labels).
+- **Map** — Interactive US map of the trip route with pinch/drag zoom and toggleable art layers (state outlines, animals, labels).
 
 ## Stack
 
@@ -21,8 +21,10 @@ A mobile-first PWA for gamifying family road trips. Parents award points to kids
 | Route | Access | Description |
 |---|---|---|
 | `/` | Public | Points scoreboard |
-| `/map` | Public | Trip route map |
-| `/bonus` | Public | Daily riddle vault |
+| `/map` | Public | Trip route map (pinch/drag) |
+| `/games` | Public | Games hub |
+| `/bonus` | Public | Daily riddle (+5) |
+| `/games/flags` | Public | World Cup flag quiz (+10 once per kid) |
 | `/worldcup` | Public | 2026 World Cup group-stage predictions |
 | `/worldcup/picks` | Public | Family pick'em — predict scores, earn points |
 | `/celebrate` | Public | Confetti page (`?kid=Name&action=...`) |
@@ -61,7 +63,8 @@ Connect a custom domain in the Vercel dashboard and point a CNAME to \`cname.ver
 - **Kids and avatars** — \`app/page.tsx\` (names and emojis)
 - **Admin kids list** — \`app/admin/page.tsx\` and \`app/bonus/BonusClient.tsx\`
 - **Riddles** — \`lib/riddles.ts\` (add/edit as needed, rotates by day of year)
-- **Route stops** — \`app/map/page.tsx\` (\`STOPS\` array, coordinates in SVG viewBox space)
+- **Flag quiz** — \`lib/games/flagquiz.ts\` (accepted spellings per country). Reward (+10, once per kid) tracked in Redis; games live under \`/games\`.
+- **Route stops** — \`app/map/page.tsx\` (\`STOPS\`/\`ROUTE\`, coordinates in SVG viewBox space)
 - **Map art** — \`public/usmap_outlines.png\`, \`usmap_animals.png\`, \`usmap_labels.png\`
 - **World Cup** — \`lib/worldcup/fixtures.ts\` is the single source of truth for the schedule (match no, date, kickoff, venue, real home/away, and final score once played). Team power ratings live in \`lib/worldcup/data.ts\`. Enter results live from the \`/worldcup\` page; unplayed matches are predicted by \`lib/worldcup/predict.ts\`. The standings page shows a Through / Likely through / Likely out / Out outlook (confirmed from results, "likely" from the projection). Top 2 per group plus the 8 best third-placed teams advance.
 - **Family pick'em** — \`/worldcup/picks\`. Each person predicts a score per match; exact score = 3 pts, correct outcome = 1 pt. Players and their accent colors live in \`lib/worldcup/brand.ts\` (\`PREDICTORS\`); group colors and the \`text_on\` legibility rule come from the same module (per the project style guide). Picks and scores are stored in Redis.

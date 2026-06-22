@@ -14,7 +14,7 @@ export default async function HomePage() {
         <Image src="/vaughn_120.png" alt="Vaughn" width={60} height={60} className="rounded-full" />
         <div>
           <h1 className="text-2xl font-black text-slate-900 dark:text-white">Car Points</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400">New Orleans Road Trip</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">California Road Trip</p>
         </div>
       </div>
 
@@ -38,7 +38,7 @@ export default async function HomePage() {
       </div>
 
       <p className="mt-6 text-center text-xs text-slate-400 dark:text-slate-500">
-        Tap <strong className="text-slate-500 dark:text-slate-400">Vault</strong> to solve today&apos;s riddle for +5 pts
+        Tap <strong className="text-slate-500 dark:text-slate-400">Games</strong> to earn bonus points
       </p>
     </div>
   )

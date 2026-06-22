@@ -22,7 +22,7 @@ export default function BonusClient({ riddle, claimants }: { riddle: Riddle; cla
     startTransition(async () => {
       const result = await submitVaultAnswer(kid, answer)
       if (result.success) {
-        router.push(`/celebrate?kid=${encodeURIComponent(kid)}&action=${encodeURIComponent('cracked the vault! +5 pts 🔐')}`)
+        router.push(`/celebrate?kid=${encodeURIComponent(kid)}&action=${encodeURIComponent('solved the riddle! +5 pts 🧩')}`)
       } else {
         setError(result.error ?? 'Try again!')
         setAnswer('')
