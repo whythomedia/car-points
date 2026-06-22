@@ -11,18 +11,18 @@ export type EditableMatch = {
   homeFlag: string
   awayName: string
   awayFlag: string
-  ga: number // predicted
-  gb: number // predicted
 }
 
 function MatchRow({ match }: { match: EditableMatch }) {
   const router = useRouter()
-  const [ga, setGa] = useState(String(match.ga))
-  const [gb, setGb] = useState(String(match.gb))
+  const [ga, setGa] = useState('')
+  const [gb, setGb] = useState('')
+  const dirty = ga !== '' && gb !== ''
   const [saved, setSaved] = useState(false)
   const [isPending, startTransition] = useTransition()
 
   function save() {
+    if (!dirty) return
     startTransition(async () => {
       await saveWorldCupResult(match.group, match.homeName, match.awayName, Number(ga), Number(gb))
       setSaved(true)
@@ -39,23 +39,25 @@ function MatchRow({ match }: { match: EditableMatch }) {
       <input
         inputMode="numeric"
         value={ga}
+        placeholder="–"
         onChange={(e) => setGa(e.target.value.replace(/\D/g, '').slice(0, 2))}
-        className="w-9 rounded-md border border-slate-200 bg-white py-1 text-center text-slate-900 focus:border-teal-500 focus:outline-none dark:border-slate-600 dark:bg-slate-700 dark:text-white"
+        className="w-9 rounded-md border border-slate-200 bg-white py-1 text-center text-slate-900 placeholder-slate-300 focus:border-teal-500 focus:outline-none dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
       />
       <span className="text-slate-400">–</span>
       <input
         inputMode="numeric"
         value={gb}
+        placeholder="–"
         onChange={(e) => setGb(e.target.value.replace(/\D/g, '').slice(0, 2))}
-        className="w-9 rounded-md border border-slate-200 bg-white py-1 text-center text-slate-900 focus:border-teal-500 focus:outline-none dark:border-slate-600 dark:bg-slate-700 dark:text-white"
+        className="w-9 rounded-md border border-slate-200 bg-white py-1 text-center text-slate-900 placeholder-slate-300 focus:border-teal-500 focus:outline-none dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
       />
       <span className="flex flex-1 items-center gap-1.5 text-left text-slate-700 dark:text-slate-200">
         <TeamFlag name={match.awayName} emoji={match.awayFlag} size={18} /> {match.awayName}
       </span>
       <button
         onClick={save}
-        disabled={isPending}
-        className="rounded-md bg-teal-600 px-2 py-1 text-xs font-bold text-white hover:bg-teal-500 disabled:opacity-50"
+        disabled={isPending || !dirty}
+        className="rounded-md bg-teal-600 px-2 py-1 text-xs font-bold text-white hover:bg-teal-500 disabled:opacity-40"
       >
         {saved ? '✓' : 'Save'}
       </button>

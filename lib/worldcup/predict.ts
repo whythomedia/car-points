@@ -79,20 +79,29 @@ function pairings(teams: Team[]): [Team, Team][] {
   return out
 }
 
-function findResult(group: Group, a: string, b: string) {
+function rawResult(group: Group, a: string, b: string) {
   for (const r of group.results) {
-    if (r.a === a && r.b === b) return { ga: r.ga, gb: r.gb, flip: false }
-    if (r.a === b && r.b === a) return { ga: r.gb, gb: r.ga, flip: false }
+    if ((r.a === a && r.b === b) || (r.a === b && r.b === a)) return r
   }
   return null
 }
 
-// All six matches of a group as either real results or predictions.
+// All six matches of a group as either real results or predictions. Played
+// matches keep the real home/away orientation stored in data.ts (home = the
+// team listed first); unplayed matches fall back to the group's listing order.
 export function groupMatches(group: Group): Match[] {
+  const byName = new Map(group.teams.map((t) => [t.name, t]))
   return pairings(group.teams).map(([home, away]) => {
-    const real = findResult(group, home.name, away.name)
-    if (real) {
-      return { group: group.id, home, away, ga: real.ga, gb: real.gb, played: true }
+    const r = rawResult(group, home.name, away.name)
+    if (r) {
+      return {
+        group: group.id,
+        home: byName.get(r.a)!,
+        away: byName.get(r.b)!,
+        ga: r.ga,
+        gb: r.gb,
+        played: true,
+      }
     }
     const p = predictMatch(home, away)
     return { group: group.id, home, away, ga: p.ga, gb: p.gb, played: false }
@@ -157,8 +166,7 @@ export type GroupProjection = {
   table: Standing[]
 }
 
-export function projectGroup(group: Group): GroupProjection {
-  const matches = groupMatches(group)
+function buildStandings(group: Group, matches: Match[]): Standing[] {
   const table = new Map<string, Standing>()
   for (const team of group.teams) table.set(team.name, blankStanding(team, group.id))
   for (const m of matches) applyMatch(table, m)
@@ -166,7 +174,17 @@ export function projectGroup(group: Group): GroupProjection {
 
   const ordered = [...table.values()].sort(compareStandings)
   ordered.forEach((s, i) => (s.rank = i + 1))
-  return { id: group.id, matches, table: ordered }
+  return ordered
+}
+
+export function projectGroup(group: Group): GroupProjection {
+  const matches = groupMatches(group)
+  return { id: group.id, matches, table: buildStandings(group, matches) }
+}
+
+// Standings from games actually played so far (no predictions).
+export function actualGroupTable(group: Group): Standing[] {
+  return buildStandings(group, groupMatches(group).filter((m) => m.played))
 }
 
 export type Tournament = {
@@ -190,15 +208,100 @@ export function projectTournament(groups: Group[] = GROUPS): Tournament {
   return { groups: projections, thirdsRace, qualifyingThirds }
 }
 
-export type Advancement = 'auto' | 'third-in' | 'third-out' | 'eliminated'
+// --- Qualification outlook -------------------------------------------------
 
-export function advancement(
-  standing: Standing,
-  qualifyingThirds: Set<string>
-): Advancement {
-  if (standing.rank <= 2) return 'auto'
-  if (standing.rank === 3) {
-    return qualifyingThirds.has(standing.team.name) ? 'third-in' : 'third-out'
+export type Bucket = 'through' | 'likely-through' | 'likely-out' | 'out'
+
+// Points each team has actually banked so far.
+function actualPoints(group: Group): Map<string, number> {
+  const pts = new Map<string, number>(group.teams.map((t) => [t.name, 0]))
+  for (const m of groupMatches(group).filter((m) => m.played)) {
+    if (m.ga > m.gb) pts.set(m.home.name, pts.get(m.home.name)! + 3)
+    else if (m.ga < m.gb) pts.set(m.away.name, pts.get(m.away.name)! + 3)
+    else {
+      pts.set(m.home.name, pts.get(m.home.name)! + 1)
+      pts.set(m.away.name, pts.get(m.away.name)! + 1)
+    }
   }
-  return 'eliminated'
+  return pts
+}
+
+function lossesByTeam(group: Group): Map<string, number> {
+  const losses = new Map<string, number>(group.teams.map((t) => [t.name, 0]))
+  for (const m of groupMatches(group).filter((m) => m.played)) {
+    if (m.ga > m.gb) losses.set(m.away.name, losses.get(m.away.name)! + 1)
+    else if (m.ga < m.gb) losses.set(m.home.name, losses.get(m.home.name)! + 1)
+  }
+  return losses
+}
+
+// Teams mathematically guaranteed a top-2 finish: across EVERY outcome of the
+// group's remaining games, at most one other team can finish level-or-above on
+// points (so no tiebreaker can drop them to 3rd). Brute-forced — a group has at
+// most 4 games left (3^4 = 81 combinations).
+export function confirmedThrough(group: Group): Set<string> {
+  const remaining = groupMatches(group).filter((m) => !m.played)
+  const base = actualPoints(group)
+  const safe = new Map<string, boolean>(group.teams.map((t) => [t.name, true]))
+
+  const combos = 3 ** remaining.length
+  for (let c = 0; c < combos; c++) {
+    const pts = new Map(base)
+    let x = c
+    for (const m of remaining) {
+      const o = x % 3
+      x = Math.floor(x / 3)
+      if (o === 0) pts.set(m.home.name, pts.get(m.home.name)! + 3)
+      else if (o === 1) pts.set(m.away.name, pts.get(m.away.name)! + 3)
+      else {
+        pts.set(m.home.name, pts.get(m.home.name)! + 1)
+        pts.set(m.away.name, pts.get(m.away.name)! + 1)
+      }
+    }
+    for (const t of group.teams) {
+      if (!safe.get(t.name)) continue
+      const tp = pts.get(t.name)!
+      let atOrAbove = 0
+      for (const u of group.teams) {
+        if (u.name !== t.name && pts.get(u.name)! >= tp) atOrAbove++
+      }
+      if (atOrAbove > 1) safe.set(t.name, false)
+    }
+  }
+  return new Set([...safe].filter(([, v]) => v).map(([k]) => k))
+}
+
+export type GroupAnalysis = {
+  id: string
+  table: Standing[] // actual standings so far
+  buckets: Map<string, Bucket>
+}
+
+// Confirmed status comes from real results only; "likely" leans on the model's
+// projection of the remaining games (top 2, plus the 8 best third-placed).
+export function analyzeTournament(groups: Group[] = GROUPS): { groups: GroupAnalysis[] } {
+  const proj = projectTournament(groups)
+  const projRank = new Map<string, number>()
+  for (const g of proj.groups) for (const s of g.table) projRank.set(s.team.name, s.rank)
+
+  const analyses = groups.map((group): GroupAnalysis => {
+    const table = actualGroupTable(group)
+    const through = confirmedThrough(group)
+    const losses = lossesByTeam(group)
+    const buckets = new Map<string, Bucket>()
+
+    for (const s of table) {
+      const name = s.team.name
+      if ((losses.get(name) ?? 0) >= 2) buckets.set(name, 'out')
+      else if (through.has(name)) buckets.set(name, 'through')
+      else {
+        const r = projRank.get(name) ?? 4
+        const advancing = r <= 2 || (r === 3 && proj.qualifyingThirds.has(name))
+        buckets.set(name, advancing ? 'likely-through' : 'likely-out')
+      }
+    }
+    return { id: group.id, table, buckets }
+  })
+
+  return { groups: analyses }
 }

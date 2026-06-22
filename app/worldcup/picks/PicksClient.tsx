@@ -91,7 +91,7 @@ function UpcomingRow({
       <input
         inputMode="numeric"
         value={ga}
-        placeholder={String(match.ga)}
+        placeholder="–"
         onChange={(e) => setGa(e.target.value.replace(/\D/g, '').slice(0, 2))}
         className="w-9 rounded-md border border-slate-200 bg-white py-1 text-center text-slate-900 placeholder-slate-300 focus:border-teal-500 focus:outline-none dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
       />
@@ -99,7 +99,7 @@ function UpcomingRow({
       <input
         inputMode="numeric"
         value={gb}
-        placeholder={String(match.gb)}
+        placeholder="–"
         onChange={(e) => setGb(e.target.value.replace(/\D/g, '').slice(0, 2))}
         className="w-9 rounded-md border border-slate-200 bg-white py-1 text-center text-slate-900 placeholder-slate-300 focus:border-teal-500 focus:outline-none dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
       />
@@ -231,7 +231,7 @@ export default function PicksClient({ users, matches, picks, leaderboard }: Prop
               <span className="h-3 w-3 rounded-full" style={{ backgroundColor: r.color }} />
               <span className="flex-1 font-bold text-slate-900 dark:text-white">{r.name}</span>
               <span className="text-xs text-slate-400 dark:text-slate-500">
-                {r.exact} exact · {r.correct} outcome
+                {r.exact} exact · {r.correct} winners
               </span>
               <span className="w-10 text-right text-lg font-black tabular-nums text-slate-900 dark:text-white">
                 {r.points}
@@ -240,7 +240,7 @@ export default function PicksClient({ users, matches, picks, leaderboard }: Prop
           ))}
         </div>
         <p className="mt-2 text-center text-xs text-slate-400 dark:text-slate-500">
-          Exact score = 3 pts · correct outcome = 1 pt
+          Exact score = 3 pts · correct winner = 1 pt
         </p>
       </div>
 
@@ -275,9 +275,9 @@ export default function PicksClient({ users, matches, picks, leaderboard }: Prop
           </span>
         </h2>
         <p className="mb-3 text-xs text-slate-500 dark:text-slate-400">
-          Playing as <strong style={{ color: user.color }}>{user.name}</strong>. Boxes
-          show the model&apos;s guess — type your own and tap Pick. Dots show who else
-          has locked a pick (scores stay hidden until kickoff).
+          Playing as <strong style={{ color: user.color }}>{user.name}</strong>. Type your
+          score and tap Pick. Dots show who else has locked a pick (scores stay hidden
+          until kickoff).
         </p>
         {upcoming.length === 0 ? (
           <p className="text-center text-sm text-slate-400 dark:text-slate-500">

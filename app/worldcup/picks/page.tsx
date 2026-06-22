@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { getGroupsWithResults, matchId } from '@/lib/worldcup/store'
-import { groupMatches, predictMatch } from '@/lib/worldcup/predict'
+import { groupMatches } from '@/lib/worldcup/predict'
 import { GROUP_COLORS, PREDICTORS } from '@/lib/worldcup/brand'
 import { buildLeaderboard, getAllPicks, type GradedMatch } from '@/lib/worldcup/picks'
 import PicksClient, { type PickMatch } from './PicksClient'
@@ -13,21 +13,19 @@ export default async function PicksPage() {
   const [groups, picks] = await Promise.all([getGroupsWithResults(), getAllPicks()])
 
   const matches: PickMatch[] = groups.flatMap((group) =>
-    groupMatches(group).map((m) => {
-      const hint = m.played ? { ga: m.ga, gb: m.gb } : predictMatch(m.home, m.away)
-      return {
-        matchId: matchId(group.id, m.home.name, m.away.name),
-        group: group.id,
-        groupColor: GROUP_COLORS[group.id],
-        homeName: m.home.name,
-        homeFlag: m.home.flag,
-        awayName: m.away.name,
-        awayFlag: m.away.flag,
-        played: m.played,
-        ga: m.played ? m.ga : hint.ga,
-        gb: m.played ? m.gb : hint.gb,
-      }
-    })
+    groupMatches(group).map((m) => ({
+      matchId: matchId(group.id, m.home.name, m.away.name),
+      group: group.id,
+      groupColor: GROUP_COLORS[group.id],
+      homeName: m.home.name,
+      homeFlag: m.home.flag,
+      awayName: m.away.name,
+      awayFlag: m.away.flag,
+      played: m.played,
+      // Only meaningful when played; unplayed matches carry no prediction.
+      ga: m.played ? m.ga : 0,
+      gb: m.played ? m.gb : 0,
+    }))
   )
 
   const played: GradedMatch[] = matches
