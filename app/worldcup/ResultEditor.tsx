@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { saveWorldCupResult } from '@/app/actions'
+import TeamFlag from './TeamFlag'
 
 export type EditableMatch = {
   group: string
@@ -32,8 +33,8 @@ function MatchRow({ match }: { match: EditableMatch }) {
 
   return (
     <div className="flex items-center gap-2 py-2 text-sm">
-      <span className="flex-1 text-right text-slate-700 dark:text-slate-200">
-        {match.homeName} <span className="ml-1">{match.homeFlag}</span>
+      <span className="flex flex-1 items-center justify-end gap-1.5 text-right text-slate-700 dark:text-slate-200">
+        {match.homeName} <TeamFlag name={match.homeName} emoji={match.homeFlag} size={18} />
       </span>
       <input
         inputMode="numeric"
@@ -48,8 +49,8 @@ function MatchRow({ match }: { match: EditableMatch }) {
         onChange={(e) => setGb(e.target.value.replace(/\D/g, '').slice(0, 2))}
         className="w-9 rounded-md border border-slate-200 bg-white py-1 text-center text-slate-900 focus:border-teal-500 focus:outline-none dark:border-slate-600 dark:bg-slate-700 dark:text-white"
       />
-      <span className="flex-1 text-left text-slate-700 dark:text-slate-200">
-        <span className="mr-1">{match.awayFlag}</span> {match.awayName}
+      <span className="flex flex-1 items-center gap-1.5 text-left text-slate-700 dark:text-slate-200">
+        <TeamFlag name={match.awayName} emoji={match.awayFlag} size={18} /> {match.awayName}
       </span>
       <button
         onClick={save}

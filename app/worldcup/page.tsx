@@ -8,6 +8,8 @@ import {
   type Standing,
 } from '@/lib/worldcup/predict'
 import ResultEditor, { type EditableMatch } from './ResultEditor'
+import TeamFlag from './TeamFlag'
+import { GROUP_COLORS, textOn } from '@/lib/worldcup/brand'
 
 export const metadata = {
   title: 'World Cup 2026 — Predictions',
@@ -44,7 +46,7 @@ function StandingRow({
   return (
     <div className={`flex items-center gap-2 py-1.5 text-sm ${dim}`}>
       <span className="w-4 text-center font-bold text-slate-400 dark:text-slate-500">{s.rank}</span>
-      <span className="text-lg">{s.team.flag}</span>
+      <TeamFlag name={s.team.name} emoji={s.team.flag} size={22} />
       <span className="flex-1 font-semibold text-slate-900 dark:text-white">{s.team.name}</span>
       <span className="w-12 text-right tabular-nums text-slate-400 dark:text-slate-500">
         {s.gd >= 0 ? '+' : ''}
@@ -119,8 +121,16 @@ export default async function WorldCupPage() {
               key={g.id}
               className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800"
             >
-              <div className="mb-1 flex items-baseline justify-between">
-                <h2 className="font-black text-slate-900 dark:text-white">Group {g.id}</h2>
+              <div className="mb-1 flex items-center justify-between">
+                <h2 className="flex items-center gap-2 font-black text-slate-900 dark:text-white">
+                  <span
+                    className="inline-flex h-5 w-5 items-center justify-center rounded text-xs font-black"
+                    style={{ backgroundColor: GROUP_COLORS[g.id], color: textOn(GROUP_COLORS[g.id]) }}
+                  >
+                    {g.id}
+                  </span>
+                  Group {g.id}
+                </h2>
                 <span className="text-xs font-semibold text-slate-400 dark:text-slate-500">GD · Pts</span>
               </div>
 
@@ -142,14 +152,14 @@ export default async function WorldCupPage() {
                         key={`${m.home.name}-${m.away.name}`}
                         className="flex items-center gap-2 py-0.5 text-sm"
                       >
-                        <span className="flex-1 text-right text-slate-600 dark:text-slate-300">
-                          {m.home.name} {m.home.flag}
+                        <span className="flex flex-1 items-center justify-end gap-1.5 text-right text-slate-600 dark:text-slate-300">
+                          {m.home.name} <TeamFlag name={m.home.name} emoji={m.home.flag} size={18} />
                         </span>
                         <span className="font-bold tabular-nums text-slate-900 dark:text-white">
                           {m.ga}–{m.gb}
                         </span>
-                        <span className="flex-1 text-left text-slate-600 dark:text-slate-300">
-                          {m.away.flag} {m.away.name}
+                        <span className="flex flex-1 items-center gap-1.5 text-left text-slate-600 dark:text-slate-300">
+                          <TeamFlag name={m.away.name} emoji={m.away.flag} size={18} /> {m.away.name}
                         </span>
                         <span className={`w-16 text-right text-xs font-semibold ${CONF_STYLE[p.confidence]}`}>
                           {p.confidence}
@@ -179,7 +189,7 @@ export default async function WorldCupPage() {
                 className={`flex items-center gap-2 py-1.5 text-sm ${inSet ? '' : 'opacity-60'}`}
               >
                 <span className="w-4 text-center font-bold text-slate-400 dark:text-slate-500">{i + 1}</span>
-                <span className="text-lg">{s.team.flag}</span>
+                <TeamFlag name={s.team.name} emoji={s.team.flag} size={22} />
                 <span className="flex-1 font-semibold text-slate-900 dark:text-white">
                   {s.team.name}
                   <span className="ml-1 text-xs font-normal text-slate-400 dark:text-slate-500">

@@ -65,6 +65,7 @@ Connect a custom domain in the Vercel dashboard and point a CNAME to \`cname.ver
 - **Map art** — \`public/usmap_outlines.png\`, \`usmap_animals.png\`, \`usmap_labels.png\`
 - **World Cup** — \`lib/worldcup/data.ts\` (groups, team power ratings, played results). Edit \`results\` as matches finish, or enter them live from the \`/worldcup\` page. Unplayed matches are predicted by \`lib/worldcup/predict.ts\`; top 2 per group plus the 8 best third-placed teams advance.
 - **Family pick'em** — \`/worldcup/picks\`. Each person predicts a score per match; exact score = 3 pts, correct outcome = 1 pt. Players and their accent colors live in \`lib/worldcup/brand.ts\` (\`PREDICTORS\`); group colors and the \`text_on\` legibility rule come from the same module (per the project style guide). Picks and scores are stored in Redis.
+- **Flag badges** — circular "ball" flags in \`public/flags/<iso>.png\` (256px), mapped to teams in \`lib/worldcup/flags.ts\` and rendered by \`app/worldcup/TeamFlag.tsx\` (falls back to the team emoji if an asset is missing).
 
 ## PWA
 

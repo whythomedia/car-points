@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { saveWorldCupPick } from '@/app/actions'
 import { textOn, type Predictor } from '@/lib/worldcup/brand'
 import { scorePick, type AllPicks, type LeaderRow } from '@/lib/worldcup/picks'
+import TeamFlag from '../TeamFlag'
 
 export type PickMatch = {
   matchId: string
@@ -84,8 +85,8 @@ function UpcomingRow({
 
   return (
     <div className="flex items-center gap-2 py-2 text-sm">
-      <span className="flex-1 text-right text-slate-700 dark:text-slate-200">
-        {match.homeName} <span className="ml-1">{match.homeFlag}</span>
+      <span className="flex flex-1 items-center justify-end gap-1.5 text-right text-slate-700 dark:text-slate-200">
+        {match.homeName} <TeamFlag name={match.homeName} emoji={match.homeFlag} size={18} />
       </span>
       <input
         inputMode="numeric"
@@ -102,8 +103,8 @@ function UpcomingRow({
         onChange={(e) => setGb(e.target.value.replace(/\D/g, '').slice(0, 2))}
         className="w-9 rounded-md border border-slate-200 bg-white py-1 text-center text-slate-900 placeholder-slate-300 focus:border-teal-500 focus:outline-none dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
       />
-      <span className="flex-1 text-left text-slate-700 dark:text-slate-200">
-        <span className="mr-1">{match.awayFlag}</span> {match.awayName}
+      <span className="flex flex-1 items-center gap-1.5 text-left text-slate-700 dark:text-slate-200">
+        <TeamFlag name={match.awayName} emoji={match.awayFlag} size={18} /> {match.awayName}
       </span>
       <span className="flex w-8 justify-center gap-0.5">
         {pickedColors.map((c, i) => (
@@ -139,17 +140,17 @@ function CompletedRow({
     <div className="py-2 text-sm">
       <div className="flex items-center gap-2">
         <span
-          className={`flex-1 text-right ${winner === 'home' ? 'font-black text-slate-900 dark:text-white' : 'text-slate-600 dark:text-slate-300'}`}
+          className={`flex flex-1 items-center justify-end gap-1.5 text-right ${winner === 'home' ? 'font-black text-slate-900 dark:text-white' : 'text-slate-600 dark:text-slate-300'}`}
         >
-          {match.homeName} <span className="ml-1">{match.homeFlag}</span>
+          {match.homeName} <TeamFlag name={match.homeName} emoji={match.homeFlag} size={18} />
         </span>
         <span className="rounded bg-slate-900 px-2 py-0.5 font-black tabular-nums text-white dark:bg-slate-200 dark:text-slate-900">
           {match.ga}–{match.gb}
         </span>
         <span
-          className={`flex-1 text-left ${winner === 'away' ? 'font-black text-slate-900 dark:text-white' : 'text-slate-600 dark:text-slate-300'}`}
+          className={`flex flex-1 items-center gap-1.5 text-left ${winner === 'away' ? 'font-black text-slate-900 dark:text-white' : 'text-slate-600 dark:text-slate-300'}`}
         >
-          <span className="mr-1">{match.awayFlag}</span> {match.awayName}
+          <TeamFlag name={match.awayName} emoji={match.awayFlag} size={18} /> {match.awayName}
         </span>
       </div>
       <div className="mt-1 flex flex-wrap justify-center gap-1.5">
