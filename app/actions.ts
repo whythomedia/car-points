@@ -20,7 +20,7 @@ import { groupMatches } from '@/lib/worldcup/predict'
 import { GROUPS } from '@/lib/worldcup/data'
 import { matchId } from '@/lib/worldcup/fixtures'
 import { STATES } from '@/lib/games/states'
-import { notifyResult, notifyStateSpotted, sendPushToAll } from '@/lib/push'
+import { isPushConfigured, notifyResult, notifyStateSpotted, sendPushToAll } from '@/lib/push'
 
 export async function updateScore(kidName: string, delta: number): Promise<void> {
   await updateKidPoints(kidName, delta)
@@ -137,8 +137,13 @@ export async function sendAdminMessage(
   }
   const body = message.trim()
   if (!body) return { ok: false, error: 'Type a message first.' }
-  const sent = await sendPushToAll({ title: '📣 Car Points', body, url: '/', tag: 'admin' })
-  return { ok: true, sent }
+  if (!isPushConfigured()) return { ok: false, error: 'Push not configured (check VAPID keys).' }
+  try {
+    const sent = await sendPushToAll({ title: '📣 Car Points', body, url: '/', tag: 'admin' })
+    return { ok: true, sent }
+  } catch {
+    return { ok: false, error: 'Send failed — check the server logs.' }
+  }
 }
 
 export async function unsubscribeFromPush(endpoint: string): Promise<void> {

@@ -1,19 +1,42 @@
 import webpush from 'web-push'
 import { getPushSubscriptions, removePushSubscriptions, type PushSub } from './redis'
 
-// Configure VAPID from env. Missing keys → push is simply disabled (the app
-// still works; notifications just don't send).
-const PUBLIC = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
-const PRIVATE = process.env.VAPID_PRIVATE_KEY
-const SUBJECT = process.env.VAPID_SUBJECT || 'mailto:trip@carpoints.app'
+// Configure VAPID from env. Missing/invalid keys → push is simply disabled
+// (the app still works; notifications just don't send).
+//
+// Normalize keys to URL-safe Base64 with no padding — guards against a stray
+// newline/space or `=` padding picked up when pasting into env settings.
+function cleanKey(k?: string): string {
+  return (k ?? '').trim().replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+}
+
+function cleanSubject(s?: string): string {
+  const v = (s ?? '').trim()
+  if (!v) return 'mailto:trip@carpoints.app'
+  return /^(mailto:|https?:\/\/)/.test(v) ? v : `mailto:${v}`
+}
+
+const PUBLIC = cleanKey(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY)
+const PRIVATE = cleanKey(process.env.VAPID_PRIVATE_KEY)
+const SUBJECT = cleanSubject(process.env.VAPID_SUBJECT)
 
 let configured = false
 function ensureConfigured(): boolean {
   if (configured) return true
   if (!PUBLIC || !PRIVATE) return false
-  webpush.setVapidDetails(SUBJECT, PUBLIC, PRIVATE)
-  configured = true
-  return true
+  try {
+    webpush.setVapidDetails(SUBJECT, PUBLIC, PRIVATE)
+    configured = true
+    return true
+  } catch (err) {
+    console.error('[push] invalid VAPID configuration:', err)
+    return false
+  }
+}
+
+// Whether push is set up (valid VAPID keys present).
+export function isPushConfigured(): boolean {
+  return ensureConfigured()
 }
 
 export type PushPayload = {
