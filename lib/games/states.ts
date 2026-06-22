@@ -4,8 +4,6 @@
 
 export type State = { name: string; slug: string; abbr: string; flag: boolean }
 
-const NO_FLAG = new Set(['new-mexico', 'new-york', 'pennsylvania', 'utah', 'vermont'])
-
 const RAW: [string, string][] = [
   ['Alabama', 'AL'],
   ['Alaska', 'AK'],
@@ -61,5 +59,5 @@ const RAW: [string, string][] = [
 
 export const STATES: State[] = RAW.map(([name, abbr]) => {
   const slug = name.toLowerCase().replace(/\s+/g, '-')
-  return { name, slug, abbr, flag: !NO_FLAG.has(slug) }
+  return { name, slug, abbr, flag: true }
 })
