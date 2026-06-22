@@ -89,7 +89,6 @@ export const SEED_PICKS: SeedPick[] = [
 : { ga: 3, gb: 2 } } },
   { group: 'L', home: "Ghana", away: "Panama", picks: { Dad: { ga: 1, gb: 2 }, Mom: { ga: 2, gb: 1 }, Max: { ga: 1, gb: 3 }, Owen
 : { ga: 2, gb: 1 } } },
-  // Jordan v Argentina — picks entered late (the result was submitted early).
-  // Stored home(Jordan)-away(Argentina); everyone has Argentina winning.
-  { group: 'J', home: "Jordan", away: "Argentina", picks: { Dad: { ga: 1, gb: 3 }, Mom: { ga: 0, gb: 2 }, Max: { ga: 1, gb: 3 }, Owen: { ga: 1, gb: 4 } } },
+  // Argentina v Austria — picks entered after the result was logged.
+  { group: 'J', home: "Argentina", away: "Austria", picks: { Dad: { ga: 3, gb: 1 }, Mom: { ga: 2, gb: 0 }, Max: { ga: 3, gb: 1 }, Owen: { ga: 4, gb: 1 } } },
 ]
