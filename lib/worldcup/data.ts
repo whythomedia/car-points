@@ -7,7 +7,7 @@
 // last update). Any of the six pairings in a group that is NOT listed here is
 // treated as "not yet played" and gets predicted by the engine.
 //
-// Last updated from real results: 2026-06-20.
+// Last updated from real results: 2026-06-21.
 
 export type Team = {
   name: string
@@ -130,6 +130,8 @@ export const GROUPS: Group[] = [
     results: [
       { a: 'Belgium', b: 'Egypt', ga: 1, gb: 1 },
       { a: 'Iran', b: 'New Zealand', ga: 2, gb: 2 },
+      { a: 'Belgium', b: 'Iran', ga: 0, gb: 0 },
+      { a: 'Egypt', b: 'New Zealand', ga: 3, gb: 1 },
     ],
   },
   {
@@ -143,6 +145,8 @@ export const GROUPS: Group[] = [
     results: [
       { a: 'Spain', b: 'Cabo Verde', ga: 0, gb: 0 },
       { a: 'Saudi Arabia', b: 'Uruguay', ga: 1, gb: 1 },
+      { a: 'Spain', b: 'Saudi Arabia', ga: 4, gb: 0 },
+      { a: 'Uruguay', b: 'Cabo Verde', ga: 2, gb: 2 },
     ],
   },
   {
