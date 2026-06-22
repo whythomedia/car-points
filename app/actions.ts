@@ -1,10 +1,26 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { awardFlagQuiz, claimVaultForKid, getVaultClaimantsToday, hasKidClaimedToday, setStateSpotted, updateKidPoints } from '@/lib/redis'
+import {
+  awardFlagQuiz,
+  claimVaultForKid,
+  getSpottedStates,
+  getVaultClaimantsToday,
+  hasKidClaimedToday,
+  removePushSubscriptions,
+  savePushSubscription,
+  setStateSpotted,
+  updateKidPoints,
+  type PushSub,
+} from '@/lib/redis'
 import { getTodayRiddle } from '@/lib/riddles'
-import { clearResult, saveResult } from '@/lib/worldcup/store'
-import { savePick } from '@/lib/worldcup/picks'
+import { clearResult, getResults, saveResult } from '@/lib/worldcup/store'
+import { buildLeaderboard, getAllPicks, savePick, type GradedMatch } from '@/lib/worldcup/picks'
+import { groupMatches } from '@/lib/worldcup/predict'
+import { GROUPS } from '@/lib/worldcup/data'
+import { matchId } from '@/lib/worldcup/fixtures'
+import { STATES } from '@/lib/games/states'
+import { notifyResult, notifyStateSpotted } from '@/lib/push'
 
 export async function updateScore(kidName: string, delta: number): Promise<void> {
   await updateKidPoints(kidName, delta)
@@ -45,9 +61,25 @@ export async function saveWorldCupResult(
   ga: number,
   gb: number
 ): Promise<void> {
-  const clean = (n: number) => Math.max(0, Math.min(20, Math.round(Number(n) || 0)))
-  await saveResult(groupId, a, b, clean(ga), clean(gb))
+  const cga = Math.max(0, Math.min(20, Math.round(Number(ga) || 0)))
+  const cgb = Math.max(0, Math.min(20, Math.round(Number(gb) || 0)))
+  await saveResult(groupId, a, b, cga, cgb)
   revalidatePath('/worldcup')
+  revalidatePath('/worldcup/picks')
+
+  // Recompute the leaderboard with the new result and push it out.
+  try {
+    const [results, picks] = await Promise.all([getResults(), getAllPicks()])
+    const played: GradedMatch[] = GROUPS.flatMap((g) =>
+      groupMatches(g, results)
+        .filter((m) => m.played)
+        .map((m) => ({ matchId: matchId(g.id, m.home.name, m.away.name), actual: { ga: m.ga, gb: m.gb } }))
+    )
+    const leaderboard = buildLeaderboard(picks, played)
+    await notifyResult(`${a} ${cga}–${cgb} ${b}`, leaderboard)
+  } catch {
+    // push failures shouldn't block saving the result
+  }
 }
 
 export async function clearWorldCupResult(
@@ -77,6 +109,26 @@ export async function toggleStateSpotted(
   await setStateSpotted(slug, spotted)
   revalidatePath('/games/plates')
   revalidatePath('/games')
+
+  if (spotted) {
+    const state = STATES.find((s) => s.slug === slug)
+    const count = (await getSpottedStates()).length
+    if (state) {
+      try {
+        await notifyStateSpotted(state.name, count, STATES.length)
+      } catch {
+        // never let a push failure break the action
+      }
+    }
+  }
+}
+
+export async function subscribeToPush(sub: PushSub): Promise<void> {
+  await savePushSubscription(sub)
+}
+
+export async function unsubscribeFromPush(endpoint: string): Promise<void> {
+  await removePushSubscriptions([endpoint])
 }
 
 export async function saveWorldCupPick(

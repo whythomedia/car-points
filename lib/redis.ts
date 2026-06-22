@@ -91,3 +91,34 @@ export async function setStateSpotted(slug: string, spotted: boolean): Promise<v
   else set.delete(slug)
   await redis.set(PLATES_KEY, [...set])
 }
+
+// Web push subscriptions (shared across the family's devices), keyed by the
+// subscription endpoint so re-subscribing replaces the old record.
+const PUSH_KEY = 'push:subscriptions'
+
+export type PushSub = {
+  endpoint: string
+  keys: { p256dh: string; auth: string }
+}
+
+export async function getPushSubscriptions(): Promise<PushSub[]> {
+  try {
+    const map = (await redis.get<Record<string, PushSub>>(PUSH_KEY)) ?? {}
+    return Object.values(map)
+  } catch {
+    return []
+  }
+}
+
+export async function savePushSubscription(sub: PushSub): Promise<void> {
+  const map = (await redis.get<Record<string, PushSub>>(PUSH_KEY)) ?? {}
+  map[sub.endpoint] = sub
+  await redis.set(PUSH_KEY, map)
+}
+
+export async function removePushSubscriptions(endpoints: string[]): Promise<void> {
+  if (endpoints.length === 0) return
+  const map = (await redis.get<Record<string, PushSub>>(PUSH_KEY)) ?? {}
+  for (const e of endpoints) delete map[e]
+  await redis.set(PUSH_KEY, map)
+}

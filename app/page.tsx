@@ -1,5 +1,6 @@
 import Image from 'next/image'
 import { getKids } from '@/lib/redis'
+import NotifyCard from './NotifyCard'
 
 const AVATARS = ['🐧', '🦓', '🐆', '🐼'] // Owen, Zoe, Max, Emma
 
@@ -17,6 +18,8 @@ export default async function HomePage() {
           <p className="text-sm text-slate-500 dark:text-slate-400">California Road Trip</p>
         </div>
       </div>
+
+      <NotifyCard />
 
       {/* Kids list */}
       <div className="flex flex-col gap-3">

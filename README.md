@@ -46,7 +46,20 @@ Requires a \`.env.local\` file (see below). The app seeds default data into Redi
 UPSTASH_REDIS_REST_URL=   # From Upstash console
 UPSTASH_REDIS_REST_TOKEN= # From Upstash console
 ADMIN_PASSWORD=           # Password for /admin panel
+
+# Web push (optional). Generate with: npx web-push generate-vapid-keys
+NEXT_PUBLIC_VAPID_PUBLIC_KEY= # VAPID public key (exposed to the client)
+VAPID_PRIVATE_KEY=            # VAPID private key (keep secret)
+VAPID_SUBJECT=                # e.g. mailto:you@example.com
 \`\`\`
+
+### Push notifications
+
+Installed home-screen PWAs get web-push alerts (iOS 16.4+). The home page shows
+a **Turn on alerts** card once the app is added to the Home Screen. Notifications
+fire when a new license plate is spotted and when a World Cup result is entered
+(with the updated leaderboard). If the VAPID keys are unset, push is simply
+disabled and the rest of the app is unaffected. Service worker: \`public/sw.js\`.
 
 Add the same variables to your Vercel project settings for production.
 
