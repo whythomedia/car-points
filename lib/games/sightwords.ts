@@ -168,5 +168,36 @@ export function activeWords(): SightWord[] {
   return SIGHT_WORDS.filter((w) => w.n <= PRACTICE_THROUGH_LESSON)
 }
 
+// Emoji "pictures" for the concrete words. Function words (a, the, and, I, see…)
+// are intentionally left out — they have no picture, so they're skipped in the
+// picture-matching game. Each emoji is unique so a picture maps to one word.
+export const WORD_EMOJI: Record<string, string> = {
+  horse: '🐴', car: '🚗', ball: '⚽', fish: '🐟', boy: '👦', airplane: '✈️',
+  girl: '👧', box: '📦', chicken: '🐔', apple: '🍎', spoon: '🥄', pencil: '✏️',
+  banana: '🍌', cow: '🐄', egg: '🥚', water: '💧', candy: '🍬', mother: '👩',
+  boat: '⛵', orange: '🍊', dog: '🐶', tree: '🌳', flower: '🌸', cat: '🐱',
+  bread: '🍞', school: '🏫', teacher: '🧑‍🏫', bird: '🐦', chair: '🪑',
+  telephone: '☎️', grass: '🌿', 'ice cream': '🍦', book: '📖', paper: '📄',
+  cup: '☕', man: '👨', elephant: '🐘', scissors: '✂️', zoo: '🦁', milk: '🥛',
+  rabbit: '🐰', mouse: '🐭', bike: '🚲', knife: '🔪', picture: '🖼️',
+  magazine: '📰', game: '🎲', squirrel: '🐿️', vegetable: '🥕', plate: '🍽️',
+  balloon: '🎈', street: '🛣️', baby: '👶', window: '🪟', bear: '🐻',
+  father: '🧔', children: '🧒',
+  // colors
+  yellow: '🟡', green: '🟢', red: '🔴', blue: '🔵', black: '⚫', purple: '🟣',
+  brown: '🟤', pink: '🩷',
+  // numbers
+  one: '1️⃣', two: '2️⃣', six: '6️⃣', eight: '8️⃣',
+  // clear actions / things
+  eat: '😋', drink: '🥤', run: '🏃', jump: '🤸', ride: '🚴', look: '👀', give: '🎁',
+}
+
+// Active words that have a picture — used by the picture-matching game.
+export function imageableActiveWords(): { word: string; emoji: string }[] {
+  return activeWords()
+    .filter((w) => WORD_EMOJI[w.word])
+    .map((w) => ({ word: w.word, emoji: WORD_EMOJI[w.word] }))
+}
+
 export const ROUND_SIZE = 6
 export const CHOICES = 3
