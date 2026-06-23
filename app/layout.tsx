@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Nunito } from 'next/font/google'
 import Link from 'next/link'
 import './globals.css'
+import ServiceWorkerRegister from './ServiceWorkerRegister'
 
 const nunito = Nunito({ subsets: ['latin'], variable: '--font-nunito' })
 
@@ -82,6 +83,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="preconnect" href="https://fonts.googleapis.com" />
       </head>
       <body className="min-h-screen">
+        <ServiceWorkerRegister />
         <main className="mx-auto max-w-md page-content">
           {children}
         </main>

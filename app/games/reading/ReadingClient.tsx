@@ -1,9 +1,42 @@
 'use client'
 
-import { useRef, useState, useTransition } from 'react'
+import { useEffect, useRef, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { completeReadingRound } from '@/app/actions'
+
+type Attempt = { word: string; correct: number; wrong: number; misses?: Record<string, number> }
+
+// Finished rounds are queued here so progress survives offline and syncs later.
+const QUEUE_KEY = 'reading:pendingRounds'
+
+function loadQueue(): Attempt[][] {
+  try {
+    return JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]')
+  } catch {
+    return []
+  }
+}
+function saveQueue(q: Attempt[][]) {
+  try {
+    localStorage.setItem(QUEUE_KEY, JSON.stringify(q))
+  } catch {
+    // storage unavailable — nothing we can do
+  }
+}
+// Send queued rounds oldest-first; stops at the first failure (still offline).
+// Returns true if any queued round earned the daily +5.
+async function flushQueue(): Promise<boolean> {
+  let awardedAny = false
+  let q = loadQueue()
+  while (q.length) {
+    const res = await completeReadingRound(q[0]) // rejects when offline
+    if (res.awarded) awardedAny = true
+    q = q.slice(1)
+    saveQueue(q)
+  }
+  return awardedAny
+}
 
 type ImageWord = { word: string; emoji: string }
 type Mode = 'menu' | 'flash' | 'find' | 'type' | 'review' | 'done'
@@ -21,14 +54,31 @@ function shuffle<T>(arr: T[]): T[] {
 // "capital I"). Spell them the way they should sound.
 const SPEAK_AS: Record<string, string> = { I: 'eye' }
 
+// Prefer an on-device ("local") English voice so audio still works offline —
+// ChromeOS also offers network voices that go silent without a connection.
+let cachedVoice: SpeechSynthesisVoice | null | undefined
+function pickVoice(): SpeechSynthesisVoice | null {
+  if (cachedVoice !== undefined) return cachedVoice
+  const voices = window.speechSynthesis?.getVoices() ?? []
+  if (!voices.length) return null // list not populated yet — retry next call
+  const en = voices.filter((v) => v.lang?.toLowerCase().startsWith('en'))
+  cachedVoice = en.find((v) => v.localService) ?? en[0] ?? null
+  return cachedVoice
+}
+if (typeof window !== 'undefined' && window.speechSynthesis) {
+  window.speechSynthesis.onvoiceschanged = () => {
+    cachedVoice = undefined // recompute once voices finish loading
+  }
+}
+
 function speak(text: string) {
   if (typeof window === 'undefined' || !window.speechSynthesis) return
   window.speechSynthesis.cancel()
   const u = new SpeechSynthesisUtterance(SPEAK_AS[text] ?? text)
   u.lang = 'en-US'
   u.rate = 0.8 // a touch slow for a new reader
-  const voice = window.speechSynthesis.getVoices().find((v) => v.lang.startsWith('en'))
-  if (voice) u.voice = voice
+  const v = pickVoice()
+  if (v) u.voice = v
   window.speechSynthesis.speak(u)
 }
 
@@ -72,13 +122,28 @@ export default function ReadingClient({
   const [typeWrong, setTypeWrong] = useState(false)
   const [typeMisses, setTypeMisses] = useState(0)
   const [reveal, setReveal] = useState(false)
-  const [awarded, setAwarded] = useState<boolean | null>(null)
+  const [result, setResult] = useState<'saving' | 'awarded' | 'already' | 'queued'>('saving')
   const [, startTransition] = useTransition()
   const [reviewIdx, setReviewIdx] = useState(0)
   // Per-word tallies for the current round (correct, wrong, and wrong spellings).
   const attempts = useRef<Record<string, { c: number; w: number; m: Record<string, number> }>>({})
 
   const emojiOf = (word: string) => imageWords.find((i) => i.word === word)?.emoji
+
+  // Flush any rounds that were saved offline, on load and when we reconnect.
+  useEffect(() => {
+    const tryFlush = () => {
+      flushQueue()
+        .then((ok) => {
+          if (ok) router.refresh()
+        })
+        .catch(() => {})
+    }
+    tryFlush()
+    window.addEventListener('online', tryFlush)
+    return () => window.removeEventListener('online', tryFlush)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   function tally(word: string, correct: boolean) {
     const cur = attempts.current[word] ?? { c: 0, w: 0, m: {} }
@@ -137,17 +202,25 @@ export default function ReadingClient({
 
   function finishRound() {
     setMode('done')
-    const batch = Object.entries(attempts.current).map(([word, t]) => ({
+    setResult('saving')
+    const batch: Attempt[] = Object.entries(attempts.current).map(([word, t]) => ({
       word,
       correct: t.c,
       wrong: t.w,
       misses: t.m,
     }))
-    // Always records stats; the +5 is only awarded the first time each day.
+    // Save to the device first, then try to sync this round + any earlier ones.
+    const q = loadQueue()
+    q.push(batch)
+    saveQueue(q)
     startTransition(async () => {
-      const res = await completeReadingRound(batch)
-      setAwarded(res.awarded)
-      router.refresh()
+      try {
+        const awardedAny = await flushQueue()
+        setResult(awardedAny ? 'awarded' : 'already')
+        router.refresh()
+      } catch {
+        setResult('queued') // offline — kept on the device, will sync later
+      }
     })
   }
 
@@ -282,10 +355,14 @@ export default function ReadingClient({
         <div className="flex flex-col items-center gap-4 pt-8 text-center">
           <span className="text-6xl">🌟</span>
           <h2 className="text-2xl font-black text-slate-900 dark:text-white">Great reading, Zoe!</h2>
-          {awarded === null ? (
+          {result === 'saving' ? (
             <p className="text-sm text-slate-500 dark:text-slate-400">Saving…</p>
-          ) : awarded ? (
+          ) : result === 'awarded' ? (
             <p className="text-lg font-bold text-teal-600 dark:text-teal-400">+5 points! 🎉</p>
+          ) : result === 'queued' ? (
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              Saved on this device 📥 — points will be added when you&apos;re back online.
+            </p>
           ) : (
             <p className="text-sm text-slate-500 dark:text-slate-400">
               You already earned today&apos;s points — keep practicing!
