@@ -161,7 +161,8 @@ export const SIGHT_WORDS: SightWord[] = [
 ]
 
 // Practice pool: only words up to this lesson number are used in rounds.
-export const PRACTICE_THROUGH_LESSON = 40
+// Zoe has the first 10 down; set to 12 to ease in new words.
+export const PRACTICE_THROUGH_LESSON = 12
 
 export function activeWords(): SightWord[] {
   return SIGHT_WORDS.filter((w) => w.n <= PRACTICE_THROUGH_LESSON)

@@ -14,12 +14,17 @@ const DEFAULT_KIDS: Kid[] = [
 ]
 
 export async function getKids(): Promise<Kid[]> {
-  const kids = await redis.get<Kid[]>('kids')
-  if (!kids) {
-    await redis.set('kids', DEFAULT_KIDS)
+  try {
+    const kids = await redis.get<Kid[]>('kids')
+    if (!kids) {
+      await redis.set('kids', DEFAULT_KIDS)
+      return DEFAULT_KIDS
+    }
+    return kids
+  } catch {
+    // Redis unavailable (e.g. local without creds): show defaults.
     return DEFAULT_KIDS
   }
-  return kids
 }
 
 export async function updateKidPoints(name: string, delta: number): Promise<void> {
@@ -35,8 +40,11 @@ function todayKey() {
 }
 
 export async function getVaultClaimantsToday(): Promise<string[]> {
-  const claimants = await redis.get<string[]>(todayKey())
-  return claimants ?? []
+  try {
+    return (await redis.get<string[]>(todayKey())) ?? []
+  } catch {
+    return []
+  }
 }
 
 export async function hasKidClaimedToday(kidName: string): Promise<boolean> {
@@ -59,21 +67,33 @@ function readingTodayKey() {
 }
 
 export async function hasReadingRewardToday(): Promise<boolean> {
-  return (await redis.get<boolean>(readingTodayKey())) === true
+  try {
+    return (await redis.get<boolean>(readingTodayKey())) === true
+  } catch {
+    return false
+  }
 }
 
 export async function claimReadingReward(): Promise<boolean> {
-  if (await hasReadingRewardToday()) return false
-  await redis.set(readingTodayKey(), true)
-  await updateKidPoints(READING_KID, 5)
-  return true
+  try {
+    if (await hasReadingRewardToday()) return false
+    await redis.set(readingTodayKey(), true)
+    await updateKidPoints(READING_KID, 5)
+    return true
+  } catch {
+    return false
+  }
 }
 
 // Flag quiz — a one-time +10 per kid for naming every World Cup flag.
 const FLAG_QUIZ_KEY = 'flagquiz:winners'
 
 export async function getFlagQuizWinners(): Promise<string[]> {
-  return (await redis.get<string[]>(FLAG_QUIZ_KEY)) ?? []
+  try {
+    return (await redis.get<string[]>(FLAG_QUIZ_KEY)) ?? []
+  } catch {
+    return []
+  }
 }
 
 export async function hasKidWonFlagQuiz(kidName: string): Promise<boolean> {
