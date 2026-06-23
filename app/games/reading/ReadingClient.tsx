@@ -250,7 +250,7 @@ export default function ReadingClient({
           Card {reviewIdx + 1} of {words.length}
         </p>
         <div className="flex min-h-[19rem] flex-col items-center justify-center gap-5 rounded-3xl border border-slate-200 bg-white px-4 py-10 dark:border-slate-700 dark:bg-slate-800">
-          {emoji && <span className="text-[9rem] leading-none">{emoji}</span>}
+          {emoji && <span className="text-[11.2rem] leading-none">{emoji}</span>}
           <span className="text-center text-6xl font-black tracking-wide text-slate-900 dark:text-white">{word}</span>
           <SpeakerButton word={word} big />
         </div>
@@ -327,7 +327,7 @@ export default function ReadingClient({
         {topBar}
         <Progress idx={idx} total={findRound.length} />
         <div className="mt-5 flex flex-col items-center gap-4 rounded-3xl border border-slate-200 bg-white py-8 dark:border-slate-700 dark:bg-slate-800">
-          <span className="text-[14rem] leading-none">{q.emoji}</span>
+          <span className="text-[11.2rem] leading-none">{q.emoji}</span>
           <SpeakerButton word={q.target} />
         </div>
         <div className="mt-6 grid grid-cols-1 gap-3">
