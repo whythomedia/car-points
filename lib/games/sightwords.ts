@@ -164,8 +164,8 @@ export const SIGHT_WORDS: SightWord[] = [
 // Zoe has the first 10 down; set to 12 to ease in new words.
 export const PRACTICE_THROUGH_LESSON = 12
 
-export function activeWords(): SightWord[] {
-  return SIGHT_WORDS.filter((w) => w.n <= PRACTICE_THROUGH_LESSON)
+export function activeWords(through: number = PRACTICE_THROUGH_LESSON): SightWord[] {
+  return SIGHT_WORDS.filter((w) => w.n <= through)
 }
 
 // Emoji "pictures" for the concrete words. Function words (a, the, and, I, see…)
@@ -193,8 +193,8 @@ export const WORD_EMOJI: Record<string, string> = {
 }
 
 // Active words that have a picture — used by the picture-matching game.
-export function imageableActiveWords(): { word: string; emoji: string }[] {
-  return activeWords()
+export function imageableActiveWords(through: number = PRACTICE_THROUGH_LESSON): { word: string; emoji: string }[] {
+  return activeWords(through)
     .filter((w) => WORD_EMOJI[w.word])
     .map((w) => ({ word: w.word, emoji: WORD_EMOJI[w.word] }))
 }

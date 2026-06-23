@@ -1,5 +1,6 @@
 import { Redis } from '@upstash/redis'
 import type { Kid } from './types'
+import { PRACTICE_THROUGH_LESSON } from './games/sightwords'
 
 export const redis = new Redis({
   url: process.env.UPSTASH_REDIS_REST_URL!,
@@ -83,6 +84,45 @@ export async function claimReadingReward(): Promise<boolean> {
   } catch {
     return false
   }
+}
+
+// Per-word mastery: correct vs incorrect attempts in the Find/Type games.
+export type ReadingAttempt = { word: string; correct: number; wrong: number }
+type ReadingStats = Record<string, { c: number; w: number }>
+
+export async function getReadingStats(): Promise<ReadingStats> {
+  try {
+    return (await redis.get<ReadingStats>('reading:stats')) ?? {}
+  } catch {
+    return {}
+  }
+}
+
+export async function recordReadingAttempts(attempts: ReadingAttempt[]): Promise<void> {
+  if (!attempts.length) return
+  try {
+    const stats = (await redis.get<ReadingStats>('reading:stats')) ?? {}
+    for (const a of attempts) {
+      const cur = stats[a.word] ?? { c: 0, w: 0 }
+      stats[a.word] = { c: cur.c + (a.correct || 0), w: cur.w + (a.wrong || 0) }
+    }
+    await redis.set('reading:stats', stats)
+  } catch {
+    // best-effort: don't block gameplay on stat writes
+  }
+}
+
+// How far through the word list Zoe is practicing (parent-controlled in admin).
+export async function getReadingLevel(): Promise<number> {
+  try {
+    return (await redis.get<number>('reading:level')) ?? PRACTICE_THROUGH_LESSON
+  } catch {
+    return PRACTICE_THROUGH_LESSON
+  }
+}
+
+export async function setReadingLevel(through: number): Promise<void> {
+  await redis.set('reading:level', through)
 }
 
 // Flag quiz — a one-time +10 per kid for naming every World Cup flag.

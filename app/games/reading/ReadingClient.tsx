@@ -74,7 +74,15 @@ export default function ReadingClient({
   const [reveal, setReveal] = useState(false)
   const [awarded, setAwarded] = useState<boolean | null>(null)
   const [, startTransition] = useTransition()
-  const claimedThisVisit = useRef(rewardClaimed)
+  // Per-word correct/incorrect tallies for the current round (flushed on finish).
+  const attempts = useRef<Record<string, { c: number; w: number }>>({})
+
+  function tally(word: string, correct: boolean) {
+    const cur = attempts.current[word] ?? { c: 0, w: 0 }
+    if (correct) cur.c += 1
+    else cur.w += 1
+    attempts.current[word] = cur
+  }
 
   function startFlash() {
     setFlashRound(shuffle(words).slice(0, Math.min(roundSize, words.length)))
@@ -94,6 +102,7 @@ export default function ReadingClient({
     setFindRound(round)
     setIdx(0)
     setWrong(new Set())
+    attempts.current = {}
     setMode('find')
   }
 
@@ -105,19 +114,21 @@ export default function ReadingClient({
     setTypeWrong(false)
     setTypeMisses(0)
     setReveal(false)
+    attempts.current = {}
     setMode('type')
     speak(round[0]) // this game plays the word for her
   }
 
   function finishRound() {
     setMode('done')
-    if (claimedThisVisit.current) {
-      setAwarded(false)
-      return
-    }
+    const batch = Object.entries(attempts.current).map(([word, t]) => ({
+      word,
+      correct: t.c,
+      wrong: t.w,
+    }))
+    // Always records stats; the +5 is only awarded the first time each day.
     startTransition(async () => {
-      const res = await completeReadingRound()
-      claimedThisVisit.current = true
+      const res = await completeReadingRound(batch)
       setAwarded(res.awarded)
       router.refresh()
     })
@@ -132,11 +143,13 @@ export default function ReadingClient({
   function pickChoice(word: string) {
     const q = findRound[idx]
     if (word === q.target) {
+      tally(q.target, true)
       const next = idx + 1
       setWrong(new Set())
       if (next >= findRound.length) finishRound()
       else setIdx(next)
     } else {
+      if (!wrong.has(word)) tally(q.target, false) // count each distinct wrong pick once
       setWrong((prev) => new Set(prev).add(word))
     }
   }
@@ -144,6 +157,7 @@ export default function ReadingClient({
   function submitTyped() {
     const target = typeRound[idx]
     if (typed.trim().toLowerCase() === target.toLowerCase()) {
+      tally(target, true)
       const next = idx + 1
       setTyped('')
       setTypeWrong(false)
@@ -155,6 +169,7 @@ export default function ReadingClient({
         speak(typeRound[next])
       }
     } else {
+      tally(target, false)
       setTypeWrong(true)
       setTypeMisses((m) => m + 1)
     }
@@ -185,10 +200,17 @@ export default function ReadingClient({
       <div>
         {topBar}
         <h1 className="mb-1 text-2xl font-black text-slate-900 dark:text-white">Reading Games</h1>
-        <p className="mb-5 text-sm text-slate-600 dark:text-slate-300">
-          Finish a round to earn <strong className="text-teal-600 dark:text-teal-400">+5 points</strong> (once a day) —
-          then keep going as long as you like!
-        </p>
+        {rewardClaimed ? (
+          <p className="mb-5 text-sm text-slate-600 dark:text-slate-300">
+            Today&apos;s <strong className="text-teal-600 dark:text-teal-400">+5</strong> is in the bank ✓ — keep
+            practicing as much as you like!
+          </p>
+        ) : (
+          <p className="mb-5 text-sm text-slate-600 dark:text-slate-300">
+            Finish a round to earn <strong className="text-teal-600 dark:text-teal-400">+5 points</strong> (once a
+            day) — then keep going as long as you like!
+          </p>
+        )}
         <div className="space-y-3">
           <GameCard emoji="📖" title="Read the Words" sub="See a word and read it (tap 🔊 for help)" onClick={startFlash} />
           <GameCard emoji="🔎" title="Find the Word" sub="See a picture, tap the word that matches" onClick={startFind} />
