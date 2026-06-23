@@ -17,6 +17,24 @@ function timeAgo(ts: number): string {
   return `${d} day${d > 1 ? 's' : ''} ago`
 }
 
+function BlimpIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-5 w-5 shrink-0 text-teal-500 dark:text-teal-400"
+      fill="currentColor"
+      aria-hidden="true"
+    >
+      {/* envelope */}
+      <ellipse cx="10" cy="9.5" rx="8" ry="4.5" />
+      {/* tail fin */}
+      <path d="M16 9.5 L21 6 L20 9.5 L21 13 Z" />
+      {/* gondola */}
+      <rect x="7.5" y="13" width="5" height="2.6" rx="1.3" />
+    </svg>
+  )
+}
+
 export default function BlimpCard() {
   const [report, setReport] = useState<Report | undefined>(undefined) // undefined = loading
 
@@ -40,8 +58,10 @@ export default function BlimpCard() {
 
   return (
     <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
-      <div className="mb-1 flex items-baseline justify-between">
-        <span className="font-black text-slate-900 dark:text-white">🛩️ Goodyear Blimp</span>
+      <div className="mb-1 flex items-center justify-between">
+        <span className="flex items-center gap-1.5 font-black text-slate-900 dark:text-white">
+          <BlimpIcon /> Goodyear Blimp
+        </span>
         <span className="text-xs font-semibold text-slate-400 dark:text-slate-500">N3A · Wingfoot Three</span>
       </div>
 
@@ -49,7 +69,7 @@ export default function BlimpCard() {
         <p className="text-sm text-slate-400 dark:text-slate-500">Locating the blimp…</p>
       ) : report === null ? (
         <p className="text-sm text-slate-500 dark:text-slate-400">
-          Can&apos;t spot the blimp right now — it may be parked. Check back later!
+          🅿️ The blimp is taking a break — check back when it&apos;s flying!
         </p>
       ) : (
         <>
