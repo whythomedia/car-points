@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import {
   awardFlagQuiz,
+  claimReadingReward,
   claimVaultForKid,
   getSpottedStates,
   getVaultClaimantsToday,
@@ -89,6 +90,15 @@ export async function clearWorldCupResult(
 ): Promise<void> {
   await clearResult(groupId, a, b)
   revalidatePath('/worldcup')
+}
+
+export async function completeReadingRound(): Promise<{ awarded: boolean }> {
+  const awarded = await claimReadingReward()
+  if (awarded) {
+    revalidatePath('/')
+    revalidatePath('/games')
+  }
+  return { awarded }
 }
 
 export async function completeFlagQuiz(

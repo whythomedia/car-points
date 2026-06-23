@@ -52,6 +52,23 @@ export async function claimVaultForKid(kidName: string): Promise<void> {
   }
 }
 
+// Zoe's reading game — +5 once per day for finishing a round.
+const READING_KID = 'Zoe'
+function readingTodayKey() {
+  return `reading:${new Date().toISOString().split('T')[0]}`
+}
+
+export async function hasReadingRewardToday(): Promise<boolean> {
+  return (await redis.get<boolean>(readingTodayKey())) === true
+}
+
+export async function claimReadingReward(): Promise<boolean> {
+  if (await hasReadingRewardToday()) return false
+  await redis.set(readingTodayKey(), true)
+  await updateKidPoints(READING_KID, 5)
+  return true
+}
+
 // Flag quiz — a one-time +10 per kid for naming every World Cup flag.
 const FLAG_QUIZ_KEY = 'flagquiz:winners'
 
