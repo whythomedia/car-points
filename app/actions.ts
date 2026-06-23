@@ -20,6 +20,7 @@ import {
   type ReadingAttempt,
 } from '@/lib/redis'
 import { SIGHT_WORDS } from '@/lib/games/sightwords'
+import { getBlimpReport } from '@/lib/blimp'
 import { getTodayRiddle } from '@/lib/riddles'
 import { clearResult, getResults, saveResult } from '@/lib/worldcup/store'
 import { buildLeaderboard, getAllPicks, savePick, type GradedMatch } from '@/lib/worldcup/picks'
@@ -96,6 +97,10 @@ export async function clearWorldCupResult(
 ): Promise<void> {
   await clearResult(groupId, a, b)
   revalidatePath('/worldcup')
+}
+
+export async function fetchBlimp() {
+  return getBlimpReport()
 }
 
 export async function completeReadingRound(
