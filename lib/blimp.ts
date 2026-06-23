@@ -30,7 +30,7 @@ async function fetchLive(): Promise<BlimpReport | null> {
     try {
       const res = await fetch(url, {
         headers: { 'User-Agent': 'car-points/1.0 (family road-trip app)' },
-        next: { revalidate: 120 },
+        next: { revalidate: 600 },
       })
       if (!res.ok) continue
       const data = (await res.json()) as { ac?: AdsbAircraft[]; now?: number }

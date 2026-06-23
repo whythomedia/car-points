@@ -31,7 +31,7 @@ export default function BlimpCard() {
           if (alive) setReport(null)
         })
     load()
-    const id = setInterval(load, 120000) // refresh every 2 min while open
+    const id = setInterval(load, 600000) // refresh every 10 min while open
     return () => {
       alive = false
       clearInterval(id)
