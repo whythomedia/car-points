@@ -229,16 +229,30 @@ export default function AdminPage() {
               const total = r.correct + r.wrong
               const pct = total ? Math.round((100 * r.correct) / total) : null
               return (
-                <div key={r.word} className="flex items-center justify-between py-1.5 text-sm">
-                  <span className="font-semibold text-slate-800 dark:text-slate-100">{r.word}</span>
-                  {total === 0 ? (
-                    <span className="text-slate-400 dark:text-slate-500">not tried yet</span>
-                  ) : (
-                    <span className="flex items-center gap-2 tabular-nums">
-                      <span className="font-bold text-teal-600 dark:text-teal-400">{r.correct}✓</span>
-                      <span className="font-bold text-orange-500 dark:text-orange-400">{r.wrong}✗</span>
-                      <span className="w-10 text-right text-slate-400 dark:text-slate-500">{pct}%</span>
-                    </span>
+                <div key={r.word} className="py-1.5 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-slate-800 dark:text-slate-100">{r.word}</span>
+                    {total === 0 ? (
+                      <span className="text-slate-400 dark:text-slate-500">not tried yet</span>
+                    ) : (
+                      <span className="flex items-center gap-2 tabular-nums">
+                        <span className="font-bold text-teal-600 dark:text-teal-400">{r.correct}✓</span>
+                        <span className="font-bold text-orange-500 dark:text-orange-400">{r.wrong}✗</span>
+                        <span className="w-10 text-right text-slate-400 dark:text-slate-500">{pct}%</span>
+                      </span>
+                    )}
+                  </div>
+                  {r.misses.length > 0 && (
+                    <div className="mt-0.5 text-xs text-slate-400 dark:text-slate-500">
+                      typed:{' '}
+                      {r.misses.map((m, i) => (
+                        <span key={m.text}>
+                          {i > 0 && ', '}
+                          <span className="font-mono text-slate-500 dark:text-slate-400">“{m.text}”</span>
+                          {m.count > 1 && ` ×${m.count}`}
+                        </span>
+                      ))}
+                    </div>
                   )}
                 </div>
               )

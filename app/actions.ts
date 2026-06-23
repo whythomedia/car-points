@@ -114,7 +114,13 @@ export type ReadingProgress = {
   level: number
   count: number
   nextWord: string | null
-  rows: { n: number; word: string; correct: number; wrong: number }[]
+  rows: {
+    n: number
+    word: string
+    correct: number
+    wrong: number
+    misses: { text: string; count: number }[]
+  }[]
 }
 
 export async function getReadingProgress(
@@ -122,12 +128,16 @@ export async function getReadingProgress(
 ): Promise<{ ok: boolean; progress?: ReadingProgress }> {
   if (!(await checkAdminPassword(password))) return { ok: false }
   const [level, stats] = await Promise.all([getReadingLevel(), getReadingStats()])
-  const rows = SIGHT_WORDS.filter((w) => w.n <= level).map((w) => ({
-    n: w.n,
-    word: w.word,
-    correct: stats[w.word]?.c ?? 0,
-    wrong: stats[w.word]?.w ?? 0,
-  }))
+  const rows = SIGHT_WORDS.filter((w) => w.n <= level).map((w) => {
+    const s = stats[w.word]
+    const misses = s?.m
+      ? Object.entries(s.m)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 4)
+          .map(([text, count]) => ({ text, count }))
+      : []
+    return { n: w.n, word: w.word, correct: s?.c ?? 0, wrong: s?.w ?? 0, misses }
+  })
   const next = SIGHT_WORDS.find((w) => w.n > level)
   return {
     ok: true,

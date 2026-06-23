@@ -86,9 +86,15 @@ export async function claimReadingReward(): Promise<boolean> {
   }
 }
 
-// Per-word mastery: correct vs incorrect attempts in the Find/Type games.
-export type ReadingAttempt = { word: string; correct: number; wrong: number }
-type ReadingStats = Record<string, { c: number; w: number }>
+// Per-word mastery: correct vs incorrect attempts in the Find/Type games,
+// plus the actual wrong spellings typed (so we can spot repeated mistakes).
+export type ReadingAttempt = {
+  word: string
+  correct: number
+  wrong: number
+  misses?: Record<string, number>
+}
+type ReadingStats = Record<string, { c: number; w: number; m?: Record<string, number> }>
 
 export async function getReadingStats(): Promise<ReadingStats> {
   try {
@@ -104,7 +110,15 @@ export async function recordReadingAttempts(attempts: ReadingAttempt[]): Promise
     const stats = (await redis.get<ReadingStats>('reading:stats')) ?? {}
     for (const a of attempts) {
       const cur = stats[a.word] ?? { c: 0, w: 0 }
-      stats[a.word] = { c: cur.c + (a.correct || 0), w: cur.w + (a.wrong || 0) }
+      cur.c += a.correct || 0
+      cur.w += a.wrong || 0
+      if (a.misses) {
+        cur.m = cur.m ?? {}
+        for (const [typed, n] of Object.entries(a.misses)) {
+          cur.m[typed] = (cur.m[typed] ?? 0) + n
+        }
+      }
+      stats[a.word] = cur
     }
     await redis.set('reading:stats', stats)
   } catch {

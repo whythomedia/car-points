@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { completeReadingRound } from '@/app/actions'
 
 type ImageWord = { word: string; emoji: string }
-type Mode = 'menu' | 'flash' | 'find' | 'type' | 'done'
+type Mode = 'menu' | 'flash' | 'find' | 'type' | 'review' | 'done'
 
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr]
@@ -74,13 +74,24 @@ export default function ReadingClient({
   const [reveal, setReveal] = useState(false)
   const [awarded, setAwarded] = useState<boolean | null>(null)
   const [, startTransition] = useTransition()
-  // Per-word correct/incorrect tallies for the current round (flushed on finish).
-  const attempts = useRef<Record<string, { c: number; w: number }>>({})
+  const [reviewIdx, setReviewIdx] = useState(0)
+  // Per-word tallies for the current round (correct, wrong, and wrong spellings).
+  const attempts = useRef<Record<string, { c: number; w: number; m: Record<string, number> }>>({})
+
+  const emojiOf = (word: string) => imageWords.find((i) => i.word === word)?.emoji
 
   function tally(word: string, correct: boolean) {
-    const cur = attempts.current[word] ?? { c: 0, w: 0 }
+    const cur = attempts.current[word] ?? { c: 0, w: 0, m: {} }
     if (correct) cur.c += 1
     else cur.w += 1
+    attempts.current[word] = cur
+  }
+
+  function recordMiss(word: string, typedText: string) {
+    const t = typedText.trim().toLowerCase()
+    if (!t) return
+    const cur = attempts.current[word] ?? { c: 0, w: 0, m: {} }
+    cur.m[t] = (cur.m[t] ?? 0) + 1
     attempts.current[word] = cur
   }
 
@@ -119,12 +130,18 @@ export default function ReadingClient({
     speak(round[0]) // this game plays the word for her
   }
 
+  function startReview() {
+    setReviewIdx(0)
+    setMode('review')
+  }
+
   function finishRound() {
     setMode('done')
     const batch = Object.entries(attempts.current).map(([word, t]) => ({
       word,
       correct: t.c,
       wrong: t.w,
+      misses: t.m,
     }))
     // Always records stats; the +5 is only awarded the first time each day.
     startTransition(async () => {
@@ -170,6 +187,7 @@ export default function ReadingClient({
       }
     } else {
       tally(target, false)
+      recordMiss(target, typed) // remember exactly what she typed
       setTypeWrong(true)
       setTypeMisses((m) => m + 1)
     }
@@ -215,6 +233,42 @@ export default function ReadingClient({
           <GameCard emoji="📖" title="Read the Words" sub="See a word and read it (tap 🔊 for help)" onClick={startFlash} />
           <GameCard emoji="🔎" title="Find the Word" sub="See a picture, tap the word that matches" onClick={startFind} />
           <GameCard emoji="⌨️" title="Type the Word" sub="Hear a word and type it" onClick={startType} />
+          <GameCard emoji="🗂️" title="Review Cards" sub="Flip through words, pictures & sounds (no points)" onClick={startReview} />
+        </div>
+      </div>
+    )
+  }
+
+  // --- Review cards: word + picture + sound, move through at your own pace ---
+  if (mode === 'review') {
+    const word = words[reviewIdx]
+    const emoji = emojiOf(word)
+    return (
+      <div>
+        {topBar}
+        <p className="mb-3 text-center text-sm font-bold text-slate-400 dark:text-slate-500">
+          Card {reviewIdx + 1} of {words.length}
+        </p>
+        <div className="flex min-h-[19rem] flex-col items-center justify-center gap-5 rounded-3xl border border-slate-200 bg-white px-4 py-10 dark:border-slate-700 dark:bg-slate-800">
+          {emoji && <span className="text-[9rem] leading-none">{emoji}</span>}
+          <span className="text-center text-6xl font-black tracking-wide text-slate-900 dark:text-white">{word}</span>
+          <SpeakerButton word={word} big />
+        </div>
+        <div className="mt-6 flex gap-3">
+          <button
+            onClick={() => setReviewIdx((i) => Math.max(0, i - 1))}
+            disabled={reviewIdx === 0}
+            className="flex-1 rounded-2xl border-2 border-slate-200 py-4 text-lg font-black text-slate-600 hover:border-teal-300 disabled:opacity-30 dark:border-slate-600 dark:text-slate-300"
+          >
+            ← Back
+          </button>
+          <button
+            onClick={() => setReviewIdx((i) => Math.min(words.length - 1, i + 1))}
+            disabled={reviewIdx >= words.length - 1}
+            className="flex-1 rounded-2xl bg-teal-600 py-4 text-lg font-black text-white hover:bg-teal-500 disabled:opacity-30"
+          >
+            Next →
+          </button>
         </div>
       </div>
     )
