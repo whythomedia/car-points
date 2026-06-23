@@ -17,10 +17,14 @@ function shuffle<T>(arr: T[]): T[] {
   return a
 }
 
+// A few words the speech engine mishandles when spoken alone (e.g. it announces
+// "capital I"). Spell them the way they should sound.
+const SPEAK_AS: Record<string, string> = { I: 'eye' }
+
 function speak(text: string) {
   if (typeof window === 'undefined' || !window.speechSynthesis) return
   window.speechSynthesis.cancel()
-  const u = new SpeechSynthesisUtterance(text)
+  const u = new SpeechSynthesisUtterance(SPEAK_AS[text] ?? text)
   u.lang = 'en-US'
   u.rate = 0.8 // a touch slow for a new reader
   const voice = window.speechSynthesis.getVoices().find((v) => v.lang.startsWith('en'))
@@ -66,6 +70,7 @@ export default function ReadingClient({
   const [wrong, setWrong] = useState<Set<string>>(new Set())
   const [typed, setTyped] = useState('')
   const [typeWrong, setTypeWrong] = useState(false)
+  const [typeMisses, setTypeMisses] = useState(0)
   const [reveal, setReveal] = useState(false)
   const [awarded, setAwarded] = useState<boolean | null>(null)
   const [, startTransition] = useTransition()
@@ -98,6 +103,7 @@ export default function ReadingClient({
     setIdx(0)
     setTyped('')
     setTypeWrong(false)
+    setTypeMisses(0)
     setReveal(false)
     setMode('type')
     speak(round[0]) // this game plays the word for her
@@ -141,6 +147,7 @@ export default function ReadingClient({
       const next = idx + 1
       setTyped('')
       setTypeWrong(false)
+      setTypeMisses(0)
       setReveal(false)
       if (next >= typeRound.length) finishRound()
       else {
@@ -149,6 +156,7 @@ export default function ReadingClient({
       }
     } else {
       setTypeWrong(true)
+      setTypeMisses((m) => m + 1)
     }
   }
 
@@ -242,8 +250,8 @@ export default function ReadingClient({
       <div>
         {topBar}
         <Progress idx={idx} total={findRound.length} />
-        <div className="mt-5 flex flex-col items-center gap-3 rounded-3xl border border-slate-200 bg-white py-8 dark:border-slate-700 dark:bg-slate-800">
-          <span className="text-[5.5rem] leading-none">{q.emoji}</span>
+        <div className="mt-5 flex flex-col items-center gap-4 rounded-3xl border border-slate-200 bg-white py-8 dark:border-slate-700 dark:bg-slate-800">
+          <span className="text-[14rem] leading-none">{q.emoji}</span>
           <SpeakerButton word={q.target} />
         </div>
         <div className="mt-6 grid grid-cols-1 gap-3">
@@ -278,10 +286,9 @@ export default function ReadingClient({
     <div>
       {topBar}
       <Progress idx={idx} total={typeRound.length} />
-      <div className="mt-5 flex flex-col items-center gap-4 rounded-3xl border border-slate-200 bg-white py-10 dark:border-slate-700 dark:bg-slate-800">
+      <div className="mt-5 flex flex-col items-center gap-5 rounded-3xl border border-slate-200 bg-white px-6 py-10 dark:border-slate-700 dark:bg-slate-800">
         <span className="text-sm font-bold uppercase tracking-wide text-slate-400 dark:text-slate-500">Type the word you hear</span>
         <SpeakerButton word={target} big />
-        {reveal && <span className="text-3xl font-black tracking-widest text-slate-400 dark:text-slate-500">{target}</span>}
         <input
           value={typed}
           onChange={(e) => {
@@ -296,23 +303,30 @@ export default function ReadingClient({
           autoCorrect="off"
           autoComplete="off"
           spellCheck={false}
-          className={`w-56 rounded-2xl border-2 bg-white px-4 py-3 text-center text-3xl font-black lowercase text-slate-900 outline-none dark:bg-slate-900 dark:text-white ${
+          className={`w-full max-w-xs rounded-2xl border-2 bg-white px-4 py-3 text-center text-3xl font-black lowercase text-slate-900 outline-none dark:bg-slate-900 dark:text-white ${
             typeWrong ? 'border-orange-300' : 'border-slate-200 focus:border-teal-400 dark:border-slate-600'
           }`}
         />
-        {typeWrong && <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">Not quite — listen again and try! 💪</span>}
+        {/* fixed-height status line so the layout doesn't jump */}
+        <div className="flex h-7 items-center">
+          {reveal ? (
+            <span className="text-2xl font-black tracking-[0.3em] text-slate-400 dark:text-slate-500">{target}</span>
+          ) : typeWrong ? (
+            <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">Not quite — listen again and try! 💪</span>
+          ) : null}
+        </div>
       </div>
-      <div className="mt-6 flex gap-3">
+      <button onClick={submitTyped} className="mt-6 w-full rounded-2xl bg-teal-600 py-4 text-lg font-black text-white hover:bg-teal-500">
+        Check ✓
+      </button>
+      {typeMisses >= 3 && (
         <button
           onClick={() => setReveal((r) => !r)}
-          className="rounded-2xl border-2 border-slate-200 px-5 py-4 font-bold text-slate-600 hover:border-teal-300 dark:border-slate-600 dark:text-slate-300"
+          className="mx-auto mt-3 block text-sm font-bold text-slate-500 hover:text-teal-600 dark:text-slate-400 dark:hover:text-teal-400"
         >
-          👀 {reveal ? 'Hide' : 'Show me'}
+          👀 {reveal ? 'Hide it' : 'Show me the word'}
         </button>
-        <button onClick={submitTyped} className="flex-1 rounded-2xl bg-teal-600 py-4 text-lg font-black text-white hover:bg-teal-500">
-          Check ✓
-        </button>
-      </div>
+      )}
     </div>
   )
 }
