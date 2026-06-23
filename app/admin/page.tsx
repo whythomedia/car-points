@@ -1,7 +1,14 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { checkAdminPassword, sendAdminMessage, updateScore } from '@/app/actions'
+import {
+  adjustReadingLevel,
+  checkAdminPassword,
+  getReadingProgress,
+  sendAdminMessage,
+  updateScore,
+  type ReadingProgress,
+} from '@/app/actions'
 import { useRouter } from 'next/navigation'
 
 const KIDS = ['Owen', 'Zoe', 'Max', 'Emma']
@@ -41,7 +48,21 @@ export default function AdminPage() {
   const [feedback, setFeedback] = useState<Record<string, string>>({})
   const [message, setMessage] = useState('')
   const [msgFeedback, setMsgFeedback] = useState('')
+  const [reading, setReading] = useState<ReadingProgress | null>(null)
   const [isPending, startTransition] = useTransition()
+
+  function loadReading(pw: string) {
+    getReadingProgress(pw).then((res) => {
+      if (res.ok && res.progress) setReading(res.progress)
+    })
+  }
+
+  function handleAdjustReading(dir: 'add' | 'remove') {
+    startTransition(async () => {
+      const res = await adjustReadingLevel(password, dir)
+      if (res.ok && res.progress) setReading(res.progress)
+    })
+  }
 
   function handleSendMessage() {
     startTransition(async () => {
@@ -63,6 +84,7 @@ export default function AdminPage() {
       if (ok) {
         setUnlocked(true)
         setAuthError('')
+        loadReading(password)
       } else {
         setAuthError('Wrong password.')
         setPassword('')
@@ -169,6 +191,75 @@ export default function AdminPage() {
           {isPending ? 'Sending…' : 'Send to all devices'}
         </button>
       </div>
+
+      {/* Zoe's reading progress */}
+      {reading && (
+        <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="font-bold text-slate-900 dark:text-white">📖 Zoe&apos;s reading</span>
+            <button
+              onClick={() => loadReading(password)}
+              className="text-sm text-slate-400 hover:text-teal-600 dark:hover:text-teal-400"
+            >
+              Refresh ↻
+            </button>
+          </div>
+          <p className="mb-3 text-xs text-slate-500 dark:text-slate-400">
+            Practicing <strong>{reading.count}</strong> word{reading.count === 1 ? '' : 's'}. Add the next word when
+            she&apos;s ready.
+          </p>
+          <div className="mb-4 flex items-center gap-2">
+            <button
+              onClick={() => handleAdjustReading('remove')}
+              disabled={isPending || reading.count <= 1}
+              className="rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-sm font-bold text-slate-700 hover:bg-slate-200 disabled:opacity-40 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200"
+            >
+              − Remove last
+            </button>
+            <button
+              onClick={() => handleAdjustReading('add')}
+              disabled={isPending || !reading.nextWord}
+              className="flex-1 rounded-lg border border-teal-200 bg-teal-50 px-3 py-2 text-sm font-bold text-teal-700 hover:bg-teal-100 disabled:opacity-40 dark:border-teal-700 dark:bg-teal-900/40 dark:text-teal-300"
+            >
+              {reading.nextWord ? `+ Add “${reading.nextWord}”` : 'All words added'}
+            </button>
+          </div>
+          <div className="divide-y divide-slate-100 dark:divide-slate-700">
+            {reading.rows.map((r) => {
+              const total = r.correct + r.wrong
+              const pct = total ? Math.round((100 * r.correct) / total) : null
+              return (
+                <div key={r.word} className="py-1.5 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-slate-800 dark:text-slate-100">{r.word}</span>
+                    {total === 0 ? (
+                      <span className="text-slate-400 dark:text-slate-500">not tried yet</span>
+                    ) : (
+                      <span className="flex items-center gap-2 tabular-nums">
+                        <span className="font-bold text-teal-600 dark:text-teal-400">{r.correct}✓</span>
+                        <span className="font-bold text-orange-500 dark:text-orange-400">{r.wrong}✗</span>
+                        <span className="w-10 text-right text-slate-400 dark:text-slate-500">{pct}%</span>
+                      </span>
+                    )}
+                  </div>
+                  {r.misses.length > 0 && (
+                    <div className="mt-0.5 text-xs text-slate-400 dark:text-slate-500">
+                      typed:{' '}
+                      {r.misses.map((m, i) => (
+                        <span key={m.text}>
+                          {i > 0 && ', '}
+                          <span className="font-mono text-slate-500 dark:text-slate-400">“{m.text}”</span>
+                          {m.count > 1 && ` ×${m.count}`}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

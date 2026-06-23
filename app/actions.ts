@@ -5,15 +5,21 @@ import {
   awardFlagQuiz,
   claimReadingReward,
   claimVaultForKid,
+  getReadingLevel,
+  getReadingStats,
   getSpottedStates,
   getVaultClaimantsToday,
   hasKidClaimedToday,
+  recordReadingAttempts,
   removePushSubscriptions,
   savePushSubscription,
+  setReadingLevel,
   setStateSpotted,
   updateKidPoints,
   type PushSub,
+  type ReadingAttempt,
 } from '@/lib/redis'
+import { SIGHT_WORDS } from '@/lib/games/sightwords'
 import { getTodayRiddle } from '@/lib/riddles'
 import { clearResult, getResults, saveResult } from '@/lib/worldcup/store'
 import { buildLeaderboard, getAllPicks, savePick, type GradedMatch } from '@/lib/worldcup/picks'
@@ -92,13 +98,68 @@ export async function clearWorldCupResult(
   revalidatePath('/worldcup')
 }
 
-export async function completeReadingRound(): Promise<{ awarded: boolean }> {
+export async function completeReadingRound(
+  attempts: ReadingAttempt[] = []
+): Promise<{ awarded: boolean }> {
+  await recordReadingAttempts(attempts)
   const awarded = await claimReadingReward()
   if (awarded) {
     revalidatePath('/')
     revalidatePath('/games')
   }
   return { awarded }
+}
+
+export type ReadingProgress = {
+  level: number
+  count: number
+  nextWord: string | null
+  rows: {
+    n: number
+    word: string
+    correct: number
+    wrong: number
+    misses: { text: string; count: number }[]
+  }[]
+}
+
+export async function getReadingProgress(
+  password: string
+): Promise<{ ok: boolean; progress?: ReadingProgress }> {
+  if (!(await checkAdminPassword(password))) return { ok: false }
+  const [level, stats] = await Promise.all([getReadingLevel(), getReadingStats()])
+  const rows = SIGHT_WORDS.filter((w) => w.n <= level).map((w) => {
+    const s = stats[w.word]
+    const misses = s?.m
+      ? Object.entries(s.m)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 4)
+          .map(([text, count]) => ({ text, count }))
+      : []
+    return { n: w.n, word: w.word, correct: s?.c ?? 0, wrong: s?.w ?? 0, misses }
+  })
+  const next = SIGHT_WORDS.find((w) => w.n > level)
+  return {
+    ok: true,
+    progress: { level, count: rows.length, nextWord: next?.word ?? null, rows },
+  }
+}
+
+export async function adjustReadingLevel(
+  password: string,
+  dir: 'add' | 'remove'
+): Promise<{ ok: boolean; progress?: ReadingProgress }> {
+  if (!(await checkAdminPassword(password))) return { ok: false }
+  const level = await getReadingLevel()
+  if (dir === 'add') {
+    const next = SIGHT_WORDS.find((w) => w.n > level)
+    if (next) await setReadingLevel(next.n)
+  } else {
+    const active = SIGHT_WORDS.filter((w) => w.n <= level)
+    if (active.length > 1) await setReadingLevel(active[active.length - 2].n)
+  }
+  revalidatePath('/games/reading')
+  return getReadingProgress(password)
 }
 
 export async function completeFlagQuiz(
