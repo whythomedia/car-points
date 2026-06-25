@@ -48,7 +48,7 @@ The key lives only in Vercel env + your job's local config. Never commit it.
 
 | Field            | Required | Notes |
 |------------------|----------|-------|
-| `event`          | **yes**  | One of `airborne`, `landed`, `position`. Case-insensitive. Missing → `400`. |
+| `event`          | **yes**  | One of `airborne`, `landed`, `position`, `shutdown`. Case-insensitive. Missing → `400`. |
 | `registration`   | no       | If present it **must** be `N3A` (case-insensitive); anything else is accepted-and-ignored (`204`, no-op). |
 | `timestamp`      | no       | ISO-8601 UTC (`...Z`). If absent/unparseable we use server time. |
 | `position`       | no       | See below. May be omitted entirely. |
@@ -65,17 +65,22 @@ position is discarded (treated as "no position"), not rejected.
 
 ## What each event does
 
-| Event       | Sends a push? | Updates the homepage card? |
-|-------------|---------------|----------------------------|
-| `airborne`  | ✅ yes (deduped) | ✅ if it carries a valid position |
-| `landed`    | ✅ yes (deduped) | ✅ if it carries a valid position |
-| `position`  | ❌ no (silent)   | ✅ if it carries a valid position |
-| *(unknown)* | ❌ no            | ✅ if it carries a valid position |
+| Event       | Sends a push? | Card effect |
+|-------------|---------------|-------------|
+| `airborne`  | ✅ yes (deduped) | Updates position (if present); shows "Flying now". Wakes the card if it was asleep. |
+| `landed`    | ✅ yes (deduped) | Updates position (if present) as "last seen". Wakes the card if it was asleep. |
+| `position`  | ❌ no (silent)   | Updates position (if present); keeps "Flying now" fresh. Wakes the card if it was asleep. |
+| `shutdown`  | ✅ yes (one-time sign-off) | Records a final position (if present) and marks the card **asleep** until the next sighting. |
+| *(unknown)* | ❌ no            | No effect (accepted-and-ignored, `204`). |
 
-- **The card update happens for any event with valid coordinates**, regardless
-  of type. So even a bare `position` keeps "last seen near …" fresh.
-- **Only `airborne`/`landed` notify**, so adding periodic `position` pings later
-  won't spam phones.
+- **Only `airborne`/`landed` notify on sightings**, so adding periodic
+  `position` pings won't spam phones.
+- **"Flying now" is freshness-based:** an `airborne`/`position` fix reads as
+  "Flying now near …" for 30 minutes, then ages into "Last seen near … (updated
+  N ago)". Send periodic `position` events if you want it to stay "live" during a
+  long flight.
+- **Any sighting wakes a sleeping card** — so next road trip you don't need to do
+  anything special; the first `airborne` clears the asleep state automatically.
 
 ### Notification text
 
@@ -87,9 +92,27 @@ consistent notification — and `message` is just a safety net.
 
 ### Dedupe
 
-`airborne` and `landed` are deduplicated **per event type for 15 minutes**
-(atomic, server-side). A network retry or a double-fire can't double-ping. The
-card update is **not** deduped — re-sending a fresher position always updates it.
+`airborne`, `landed`, and the `shutdown` sign-off are deduplicated **per event
+type for 15 minutes** (atomic, server-side). A network retry or a double-fire
+can't double-ping. The card update is **not** deduped — re-sending a fresher
+position always updates it.
+
+### Shutting down for the season
+
+When you're retiring the home-side job (road trip's over), send one final event:
+
+```json
+{ "event": "shutdown", "registration": "N3A",
+  "timestamp": "2026-07-02T20:00:00Z",
+  "position": { "lat": 33.94, "lon": -118.41 } }
+```
+
+This marks the homepage card **asleep** ("😴 Blimp tracker is asleep until the
+next road trip") and, if you include a `position`, records it as the last-known
+spot so we know where to pick up. We send one gentle sign-off push. After that
+the app does **no** blimp work at all until your job comes back — the first
+`airborne` next trip wakes everything automatically. (`sleep` is accepted as an
+alias for `shutdown`.)
 
 ---
 
@@ -122,6 +145,11 @@ There is **no `429`**. Treat **any 2xx (you'll get `204`) as success.**
   need — it only refreshes a card, and there's no benefit to sub-minute updates.
 - **`landed`** (optional): send it when N3A goes quiet/lands; it pushes a
   "back on the ground near …" note and leaves the card on the final position.
+- **`shutdown`** when you retire the job for the season — see "Shutting down for
+  the season" above. This is the off-switch so nothing runs forgotten.
+- **No server-side polling:** this webhook is the *only* source of blimp data.
+  If your job isn't running, the app just shows the last thing you sent (or
+  "asleep" after a `shutdown`). Nothing on our side calls any ADS-B feed.
 
 ---
 
@@ -141,7 +169,8 @@ curl -s -o /dev/null -w "%{http_code}\n" -X POST \
 ```
 
 Expected: `204`, a push to subscribed devices, and the homepage card showing
-"Last seen near El Paso, TX". Wrong key → `401`. Secret unset in Vercel → `503`.
+"Flying now near El Paso, TX 🟢" (it ages into "Last seen near …" after 30 min
+with no further updates). Wrong key → `401`. Secret unset in Vercel → `503`.
 
 ---
 
