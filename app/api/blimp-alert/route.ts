@@ -1,12 +1,13 @@
 import { timingSafeEqual } from 'crypto'
-import { recordBlimpSighting } from '@/lib/blimp'
+import { clearBlimpDormant, recordBlimpSighting, setBlimpDormant } from '@/lib/blimp'
 import { sendPushToAll } from '@/lib/push'
 import { redis } from '@/lib/redis'
 
 // Inbound webhook for an external blimp tracker (Scott's home-desktop poller).
-// It POSTs one event when N3A goes airborne; we turn that into a push + refresh
-// the homepage "last seen" card. Auth is a single static bearer token in
-// BLIMP_ALERT_SECRET — rotate by changing the env var.
+// It POSTs events for N3A (airborne / position / landed / shutdown); we turn
+// those into push notifications and keep the homepage card current. This is the
+// only source of blimp positions — there is no server-side polling.
+// Auth is a single static bearer token in BLIMP_ALERT_SECRET (rotate via env).
 
 const REG = 'N3A'
 const DEDUPE_SECONDS = 900 // ignore repeat pushes for the same event for 15 min
@@ -51,6 +52,23 @@ function buildBody(event: string, place: string | null, pos: Pos | null, message
   return message || 'Blimp update'
 }
 
+async function pushOnce(dedupeKey: string, ts: number, payload: { title: string; body: string }) {
+  // Dedupe so a network retry can't double-ping; err toward delivering on a
+  // Redis hiccup.
+  let fresh = true
+  try {
+    fresh = (await redis.set(dedupeKey, ts, { nx: true, ex: DEDUPE_SECONDS })) === 'OK'
+  } catch {
+    fresh = true
+  }
+  if (!fresh) return
+  try {
+    await sendPushToAll({ ...payload, url: '/', tag: 'blimp' })
+  } catch {
+    // never let a push failure turn into a 500
+  }
+}
+
 export async function POST(request: Request) {
   const secret = process.env.BLIMP_ALERT_SECRET
   if (!secret) {
@@ -84,11 +102,39 @@ export async function POST(request: Request) {
   const pos = parsePos(p.position)
   const ts = (typeof p.timestamp === 'string' && Date.parse(p.timestamp)) || Date.now()
 
-  // Whenever we get coordinates, refresh the homepage "last seen" card.
+  // Tracker is shutting down for the season: record a final position, mark the
+  // card "asleep", and send a one-time sign-off.
+  if (event === 'shutdown' || event === 'sleep') {
+    if (pos) {
+      try {
+        await recordBlimpSighting({ ...pos, ts, flying: false })
+      } catch {
+        // non-fatal
+      }
+    }
+    await setBlimpDormant(ts)
+    await pushOnce('blimp:alert:shutdown', ts, {
+      title: '🛩️ Goodyear Blimp',
+      body: 'Tracker going to sleep — see you next road trip! 😴',
+    })
+    return new Response(null, { status: 204 })
+  }
+
+  // Real sightings only from here on; anything else is accepted and ignored.
+  if (event !== 'airborne' && event !== 'landed' && event !== 'position') {
+    return new Response(null, { status: 204 })
+  }
+
+  // A sighting means the tracker is awake again — clear any dormant flag.
+  await clearBlimpDormant()
+
+  // Refresh the homepage card. airborne/position imply the blimp is up; landed
+  // is on the ground.
+  const flying = event === 'airborne' || event === 'position'
   let place: string | null = null
   if (pos) {
     try {
-      const report = await recordBlimpSighting({ ...pos, ts })
+      const report = await recordBlimpSighting({ ...pos, ts, flying })
       place = report.place
     } catch {
       // non-fatal — still try to notify
@@ -96,27 +142,12 @@ export async function POST(request: Request) {
   }
 
   // Only airborne/landed transitions push; periodic "position" events just
-  // update the card silently. Dedupe pushes so a network retry can't double-ping.
+  // update the card silently.
   if (event === 'airborne' || event === 'landed') {
-    let fresh = true
-    try {
-      const res = await redis.set(`blimp:alert:${event}`, ts, { nx: true, ex: DEDUPE_SECONDS })
-      fresh = res === 'OK'
-    } catch {
-      fresh = true // Redis hiccup → err toward delivering
-    }
-    if (fresh) {
-      try {
-        await sendPushToAll({
-          title: '🛩️ Goodyear Blimp',
-          body: buildBody(event, place, pos, clean(p.message, 180)),
-          url: '/',
-          tag: 'blimp',
-        })
-      } catch {
-        // never let a push failure turn into a 500
-      }
-    }
+    await pushOnce(`blimp:alert:${event}`, ts, {
+      title: '🛩️ Goodyear Blimp',
+      body: buildBody(event, place, pos, clean(p.message, 180)),
+    })
   }
 
   return new Response(null, { status: 204 })

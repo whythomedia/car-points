@@ -1,17 +1,17 @@
 import { redis } from './redis'
 
-// The Goodyear blimp the kids spotted. N1A/N2A/N3A are the three Wingfoot
-// airships; N3A is "Wingfoot Three".
-const REG = 'N3A'
-
-// Free, keyless community ADS-B feeds (tried in order). They only return an
-// aircraft while it's airborne and broadcasting, so we cache the last hit.
-const ENDPOINTS = [
-  `https://api.adsb.lol/v2/reg/${REG}`,
-  `https://opendata.adsb.fi/api/v2/reg/${REG}`,
-]
+// Blimp positions come exclusively from the external home-desktop tracker via
+// the /api/blimp-alert webhook (see recordBlimpSighting). We no longer poll any
+// community ADS-B feed — the webhook is the single source of truth.
+//
+// The Goodyear blimp the kids spotted is N3A ("Wingfoot Three").
 
 const LAST_SEEN_KEY = 'blimp:lastSeen'
+const DORMANT_KEY = 'blimp:dormant' // set to an epoch-ms timestamp when the tracker sleeps
+
+// A recent in-flight position counts as "flying now"; after this it ages into
+// "last seen" (so a stale fix doesn't claim the blimp is still up).
+const FLYING_TTL_MS = 30 * 60 * 1000
 
 export type BlimpReport = {
   lat: number
@@ -19,37 +19,15 @@ export type BlimpReport = {
   altFt: number | null
   place: string | null
   ts: number // epoch ms of the position
+  flying?: boolean // was it airborne when this position was reported?
 }
 
-type AdsbAircraft = {
-  lat?: number
-  lon?: number
-  alt_baro?: number | string
-}
-
-async function fetchLive(): Promise<BlimpReport | null> {
-  for (const url of ENDPOINTS) {
-    try {
-      const res = await fetch(url, {
-        headers: { 'User-Agent': 'car-points/1.0 (family road-trip app)' },
-        next: { revalidate: 600 },
-      })
-      if (!res.ok) continue
-      const data = (await res.json()) as { ac?: AdsbAircraft[]; now?: number }
-      const ac = data.ac?.find((a) => typeof a.lat === 'number' && typeof a.lon === 'number')
-      if (!ac) continue
-      return {
-        lat: ac.lat as number,
-        lon: ac.lon as number,
-        altFt: typeof ac.alt_baro === 'number' ? ac.alt_baro : null,
-        place: null,
-        ts: typeof data.now === 'number' ? data.now : Date.now(),
-      }
-    } catch {
-      // try the next feed
-    }
-  }
-  return null
+// Full status for the homepage card: whether the external tracker has gone to
+// sleep, and the best position we have (live, last-seen, or none).
+export type BlimpStatus = {
+  dormant: boolean
+  dormantSince: number | null
+  report: (BlimpReport & { live: boolean }) | null
 }
 
 export async function reverseGeocode(lat: number, lon: number): Promise<string | null> {
@@ -72,26 +50,52 @@ export async function reverseGeocode(lat: number, lon: number): Promise<string |
   }
 }
 
-// Returns the blimp's position. `live` = currently broadcasting; otherwise it's
-// the last position we saw (persisted in Redis).
-export async function getBlimpReport(): Promise<(BlimpReport & { live: boolean }) | null> {
-  const live = await fetchLive()
-  if (live) {
-    live.place = await reverseGeocode(live.lat, live.lon)
-    try {
-      await redis.set(LAST_SEEN_KEY, live)
-    } catch {
-      // best-effort cache
-    }
-    return { ...live, live: true }
-  }
+async function lastSeen(): Promise<(BlimpReport & { live: boolean }) | null> {
   try {
     const last = await redis.get<BlimpReport>(LAST_SEEN_KEY)
-    if (last) return { ...last, live: false }
+    if (last) {
+      const live = !!last.flying && Date.now() - last.ts < FLYING_TTL_MS
+      return { ...last, live }
+    }
   } catch {
     // no cache available
   }
   return null
+}
+
+// Full status for the homepage card. Reads only our Redis cache — positions are
+// pushed in by the webhook, so there's nothing to fetch here. When the tracker
+// is dormant we surface the last-known position so we know where to pick up next
+// road trip.
+export async function getBlimpReport(): Promise<BlimpStatus> {
+  let dormantSince: number | null = null
+  try {
+    dormantSince = (await redis.get<number>(DORMANT_KEY)) ?? null
+  } catch {
+    // treat as not dormant
+  }
+  if (dormantSince) {
+    return { dormant: true, dormantSince, report: await lastSeen() }
+  }
+  return { dormant: false, dormantSince: null, report: await lastSeen() }
+}
+
+// Mark the tracker dormant ("gone to sleep") / wake it back up. Called by the
+// /api/blimp-alert webhook on shutdown, and cleared on the next real sighting.
+export async function setBlimpDormant(ts: number): Promise<void> {
+  try {
+    await redis.set(DORMANT_KEY, ts)
+  } catch {
+    // best-effort
+  }
+}
+
+export async function clearBlimpDormant(): Promise<void> {
+  try {
+    await redis.del(DORMANT_KEY)
+  } catch {
+    // best-effort
+  }
 }
 
 // Record a sighting reported by an external tracker (e.g. the home-desktop
@@ -102,6 +106,7 @@ export async function recordBlimpSighting(pos: {
   lon: number
   altFt?: number | null
   ts?: number
+  flying?: boolean
 }): Promise<BlimpReport> {
   const report: BlimpReport = {
     lat: pos.lat,
@@ -109,6 +114,7 @@ export async function recordBlimpSighting(pos: {
     altFt: pos.altFt ?? null,
     place: await reverseGeocode(pos.lat, pos.lon),
     ts: pos.ts ?? Date.now(),
+    flying: pos.flying ?? false,
   }
   try {
     await redis.set(LAST_SEEN_KEY, report)
