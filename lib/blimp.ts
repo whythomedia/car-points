@@ -11,6 +11,8 @@ const ENDPOINTS = [
   `https://opendata.adsb.fi/api/v2/reg/${REG}`,
 ]
 
+const LAST_SEEN_KEY = 'blimp:lastSeen'
+
 export type BlimpReport = {
   lat: number
   lon: number
@@ -50,7 +52,7 @@ async function fetchLive(): Promise<BlimpReport | null> {
   return null
 }
 
-async function reverseGeocode(lat: number, lon: number): Promise<string | null> {
+export async function reverseGeocode(lat: number, lon: number): Promise<string | null> {
   try {
     const res = await fetch(
       `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`,
@@ -77,17 +79,41 @@ export async function getBlimpReport(): Promise<(BlimpReport & { live: boolean }
   if (live) {
     live.place = await reverseGeocode(live.lat, live.lon)
     try {
-      await redis.set('blimp:lastSeen', live)
+      await redis.set(LAST_SEEN_KEY, live)
     } catch {
       // best-effort cache
     }
     return { ...live, live: true }
   }
   try {
-    const last = await redis.get<BlimpReport>('blimp:lastSeen')
+    const last = await redis.get<BlimpReport>(LAST_SEEN_KEY)
     if (last) return { ...last, live: false }
   } catch {
     // no cache available
   }
   return null
+}
+
+// Record a sighting reported by an external tracker (e.g. the home-desktop
+// poller pushing to /api/blimp-alert). Reverse-geocodes and persists it as the
+// last-known position so the homepage card shows it. Returns the stored report.
+export async function recordBlimpSighting(pos: {
+  lat: number
+  lon: number
+  altFt?: number | null
+  ts?: number
+}): Promise<BlimpReport> {
+  const report: BlimpReport = {
+    lat: pos.lat,
+    lon: pos.lon,
+    altFt: pos.altFt ?? null,
+    place: await reverseGeocode(pos.lat, pos.lon),
+    ts: pos.ts ?? Date.now(),
+  }
+  try {
+    await redis.set(LAST_SEEN_KEY, report)
+  } catch {
+    // best-effort cache
+  }
+  return report
 }
