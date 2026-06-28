@@ -32,6 +32,29 @@ function StateIcon({ state, dim }: { state: State; dim: boolean }) {
   )
 }
 
+function StateButton({ state, isSeen, onSelect }: { state: State; isSeen: boolean; onSelect: () => void }) {
+  return (
+    <button
+      onClick={onSelect}
+      className={`relative flex flex-col items-center gap-1.5 rounded-2xl border p-2.5 text-center transition ${
+        isSeen
+          ? 'border-teal-400 bg-teal-50 dark:border-teal-600 dark:bg-teal-900/30'
+          : 'border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800'
+      }`}
+    >
+      <StateIcon state={state} dim={!isSeen} />
+      <span className={`text-[11px] font-bold leading-tight ${isSeen ? 'text-teal-700 dark:text-teal-300' : 'text-slate-500 dark:text-slate-400'}`}>
+        {state.name}
+      </span>
+      {isSeen && (
+        <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-teal-600 text-xs font-black text-white shadow">
+          ✓
+        </span>
+      )}
+    </button>
+  )
+}
+
 export default function PlatesClient({
   states,
   spotted,
@@ -46,6 +69,8 @@ export default function PlatesClient({
 
   const count = seen.size
   const total = states.length
+  const toFind = states.filter((s) => !seen.has(s.slug))
+  const found = states.filter((s) => seen.has(s.slug))
 
   function confirmToggle() {
     const state = confirming!
@@ -76,37 +101,44 @@ export default function PlatesClient({
         </div>
       </div>
 
-      {/* Grid */}
-      <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-        {states.map((state) => {
-          const isSeen = seen.has(state.slug)
-          return (
-            <button
-              key={state.slug}
-              onClick={() => setConfirming(state)}
-              className={`relative flex flex-col items-center gap-1.5 rounded-2xl border p-2.5 text-center transition ${
-                isSeen
-                  ? 'border-teal-400 bg-teal-50 dark:border-teal-600 dark:bg-teal-900/30'
-                  : 'border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800'
-              }`}
-            >
-              <StateIcon state={state} dim={!isSeen} />
-              <span className={`text-[11px] font-bold leading-tight ${isSeen ? 'text-teal-700 dark:text-teal-300' : 'text-slate-500 dark:text-slate-400'}`}>
-                {state.name}
-              </span>
-              {isSeen && (
-                <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-teal-600 text-xs font-black text-white shadow">
-                  ✓
-                </span>
-              )}
-            </button>
-          )
-        })}
-      </div>
+      {/* Still to find — kept up top so the last few stand out */}
+      {toFind.length > 0 ? (
+        <>
+          <h2 className="mb-2 flex items-baseline gap-2 font-black text-slate-900 dark:text-white">
+            Still to find
+            <span className="text-sm font-bold text-slate-400 dark:text-slate-500">{toFind.length} left</span>
+          </h2>
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+            {toFind.map((state) => (
+              <StateButton key={state.slug} state={state} isSeen={false} onSelect={() => setConfirming(state)} />
+            ))}
+          </div>
+        </>
+      ) : (
+        <p className="rounded-2xl border border-teal-400 bg-teal-50 py-6 text-center font-black text-teal-700 dark:border-teal-600 dark:bg-teal-900/30 dark:text-teal-300">
+          Every state found — amazing! 🎉
+        </p>
+      )}
 
       <p className="mt-4 text-center text-xs text-slate-400 dark:text-slate-500">
         Tap a state when you spot its plate — we&apos;ll ask you to confirm.
       </p>
+
+      {/* Found */}
+      {found.length > 0 && (
+        <>
+          <hr className="my-5 border-slate-200 dark:border-slate-700" />
+          <h2 className="mb-2 flex items-baseline gap-2 font-black text-slate-900 dark:text-white">
+            Found
+            <span className="text-sm font-bold text-slate-400 dark:text-slate-500">{found.length}</span>
+          </h2>
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+            {found.map((state) => (
+              <StateButton key={state.slug} state={state} isSeen onSelect={() => setConfirming(state)} />
+            ))}
+          </div>
+        </>
+      )}
 
       {/* Confirmation dialog */}
       {confirming && (
