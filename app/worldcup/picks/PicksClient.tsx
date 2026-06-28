@@ -2,17 +2,22 @@
 
 import { useEffect, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { saveWorldCupPick } from '@/app/actions'
+import { saveWorldCupKoPick, saveWorldCupPick } from '@/app/actions'
 import { textOn, type Predictor } from '@/lib/worldcup/brand'
-import { scorePick, type AllPicks, type LeaderRow } from '@/lib/worldcup/picks'
+import { scoreKoPick, scorePick, type AllPicks, type LeaderRow, type Pick } from '@/lib/worldcup/picks'
 import TeamFlag from '../TeamFlag'
 
 export type PickMatch = {
   matchId: string
   no: number
   date: string // ISO YYYY-MM-DD
-  group: string
-  groupColor: string
+  stage: 'group' | 'ko'
+  // group stage
+  group?: string
+  groupColor?: string
+  // knockout stage
+  roundLabel?: string // e.g. "R16", "Final"
+  roundColor?: string
   homeName: string
   homeFlag: string
   awayName: string
@@ -20,6 +25,7 @@ export type PickMatch = {
   played: boolean
   ga: number // actual score when played; unused otherwise
   gb: number
+  advanced?: 'home' | 'away' // knockout, when played (who went through)
 }
 
 type Props = {
@@ -40,6 +46,22 @@ function GroupChip({ group, color }: { group: string; color: string }) {
       {group}
     </span>
   )
+}
+
+// Group letter for group matches; round tag (R16, Final…) for knockout matches.
+function StageChip({ match }: { match: PickMatch }) {
+  if (match.stage === 'ko') {
+    const color = match.roundColor ?? '#64748B'
+    return (
+      <span
+        className="inline-flex h-5 shrink-0 items-center justify-center rounded px-1.5 text-[10px] font-black"
+        style={{ backgroundColor: color, color: textOn(color) }}
+      >
+        {match.roundLabel}
+      </span>
+    )
+  }
+  return <GroupChip group={match.group!} color={match.groupColor!} />
 }
 
 function PointChip({ pts }: { pts: 0 | 1 | 3 }) {
@@ -89,7 +111,7 @@ function UpcomingRow({
 }) {
   return (
     <button onClick={onOpen} className="flex w-full items-center gap-2 py-2.5 text-left text-sm">
-      <GroupChip group={match.group} color={match.groupColor} />
+      <StageChip match={match} />
       <span className="flex flex-1 items-center justify-end gap-1.5 text-right leading-tight text-slate-700 dark:text-slate-200">
         {match.homeName} <TeamFlag name={match.homeName} emoji={match.homeFlag} size={18} />
       </span>
@@ -123,14 +145,21 @@ function CompletedRow({
   picks: AllPicks
 }) {
   const actual = { ga: match.ga, gb: match.gb }
-  const winner = match.ga > match.gb ? 'home' : match.gb > match.ga ? 'away' : 'draw'
+  const isKo = match.stage === 'ko'
+  const winner = isKo
+    ? match.advanced ?? 'draw'
+    : match.ga > match.gb
+      ? 'home'
+      : match.gb > match.ga
+        ? 'away'
+        : 'draw'
   const p = picks[match.matchId]?.[user.name]
-  const pts = p ? scorePick(p, actual) : null
+  const pts = p ? (isKo ? scoreKoPick(p, actual, match.advanced!) : scorePick(p, actual)) : null
 
   return (
     <div className="py-2 text-sm">
       <div className="flex items-center gap-2">
-        <GroupChip group={match.group} color={match.groupColor} />
+        <StageChip match={match} />
         <span className={`flex flex-1 items-center justify-end gap-1.5 text-right leading-tight ${winner === 'home' ? 'font-black text-slate-900 dark:text-white' : 'text-slate-600 dark:text-slate-300'}`}>
           {match.homeName} <TeamFlag name={match.homeName} emoji={match.homeFlag} size={18} />
         </span>
@@ -190,18 +219,29 @@ function PickModal({
 }: {
   match: PickMatch
   user: Predictor
-  savedPick?: { ga: number; gb: number }
+  savedPick?: Pick
   otherPickers: string[]
   onClose: () => void
 }) {
   const router = useRouter()
   const [ga, setGa] = useState(savedPick?.ga ?? 0)
   const [gb, setGb] = useState(savedPick?.gb ?? 0)
+  const [adv, setAdv] = useState<'home' | 'away' | undefined>(savedPick?.adv)
   const [isPending, startTransition] = useTransition()
 
+  const isKo = match.stage === 'ko'
+  // Knockouts can't end level — if they predict a tie, ask who goes through.
+  const needAdvancer = isKo && ga === gb
+  const canSave = !needAdvancer || !!adv
+
   function save() {
+    if (!canSave) return
     startTransition(async () => {
-      await saveWorldCupPick(match.matchId, user.name, ga, gb)
+      if (isKo) {
+        await saveWorldCupKoPick(match.no, user.name, ga, gb, needAdvancer ? adv : undefined)
+      } else {
+        await saveWorldCupPick(match.matchId, user.name, ga, gb)
+      }
       router.refresh()
       onClose()
     })
@@ -218,8 +258,8 @@ function PickModal({
       >
         <div className="mx-auto mb-4 h-1.5 w-10 rounded-full bg-slate-200 dark:bg-slate-600" />
         <div className="mb-1 flex items-center justify-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
-          <GroupChip group={match.group} color={match.groupColor} />
-          <span>Group {match.group} · {formatDay(match.date)}</span>
+          <StageChip match={match} />
+          <span>{isKo ? match.roundLabel : `Group ${match.group}`} · {formatDay(match.date)}</span>
         </div>
         <p className="mb-6 text-center text-xs text-slate-400 dark:text-slate-500">
           Playing as <strong style={{ color: user.color }}>{user.name}</strong>
@@ -236,12 +276,40 @@ function PickModal({
           <TeamCol name={match.awayName} flag={match.awayFlag} />
         </div>
 
+        {needAdvancer && (
+          <div className="mt-5">
+            <p className="mb-2 text-center text-xs font-semibold text-slate-500 dark:text-slate-400">
+              Level after 120′ — who wins on penalties?
+            </p>
+            <div className="flex gap-2">
+              {(['home', 'away'] as const).map((side) => {
+                const name = side === 'home' ? match.homeName : match.awayName
+                const active = adv === side
+                return (
+                  <button
+                    key={side}
+                    type="button"
+                    onClick={() => setAdv(side)}
+                    className={`flex-1 rounded-xl border-2 px-2 py-2 text-sm font-bold transition ${
+                      active
+                        ? 'border-teal-600 bg-teal-50 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300'
+                        : 'border-slate-200 text-slate-600 dark:border-slate-600 dark:text-slate-300'
+                    }`}
+                  >
+                    {name}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
         <button
           onClick={save}
-          disabled={isPending}
+          disabled={isPending || !canSave}
           className="mt-7 w-full rounded-2xl bg-teal-600 py-3.5 font-black text-white hover:bg-teal-500 disabled:opacity-50"
         >
-          {isPending ? 'Saving…' : savedPick ? 'Update pick' : 'Save pick'}
+          {isPending ? 'Saving…' : !canSave ? 'Pick who advances' : savedPick ? 'Update pick' : 'Save pick'}
         </button>
 
         {otherPickers.length > 0 && (
@@ -336,7 +404,7 @@ export default function PicksClient({ users, matches, picks, leaderboard }: Prop
         </p>
         {upcoming.length === 0 ? (
           <p className="text-center text-sm text-slate-400 dark:text-slate-500">
-            Every group match has kicked off — see the results below. 🎉
+            Nothing to pick right now — check back when the next round is set. 🎉
           </p>
         ) : (
           <div className="space-y-4">

@@ -9,7 +9,9 @@ import { SEED_PICKS } from './seed-picks'
 //   wrong outcome → 0 pts
 // Picks are keyed by the same stable match id used in store.ts.
 
-export type Pick = { ga: number; gb: number }
+// `adv` is only used for knockout picks: which side the picker thinks advances,
+// needed when they predict a level score (penalties). Group picks never set it.
+export type Pick = { ga: number; gb: number; adv?: 'home' | 'away' }
 export type PicksByUser = Record<string, Pick>
 export type AllPicks = Record<string, PicksByUser>
 
@@ -22,6 +24,15 @@ export function scorePick(pick: Pick, actual: Pick): 0 | 1 | 3 {
   return outcome(pick) === outcome(actual) ? 1 : 0
 }
 
+// Knockout scoring: exact regulation/ET score = 3; otherwise picking the team
+// that actually advances = 1. The advancer of a pick is the higher score, or
+// `adv` when the picker predicted a level score.
+export function scoreKoPick(pick: Pick, actual: Pick, advanced: 'home' | 'away'): 0 | 1 | 3 {
+  if (pick.ga === actual.ga && pick.gb === actual.gb) return 3
+  const pickAdv = pick.ga > pick.gb ? 'home' : pick.gb > pick.ga ? 'away' : pick.adv
+  return pickAdv && pickAdv === advanced ? 1 : 0
+}
+
 export type LeaderRow = {
   name: string
   color: string
@@ -31,7 +42,8 @@ export type LeaderRow = {
   graded: number // # of played matches this person picked
 }
 
-export type GradedMatch = { matchId: string; actual: Pick }
+// `ko` marks a knockout match so it's scored with scoreKoPick (advancer-based).
+export type GradedMatch = { matchId: string; actual: Pick; ko?: { advanced: 'home' | 'away' } }
 
 export function buildLeaderboard(
   picks: AllPicks,
@@ -53,7 +65,7 @@ export function buildLeaderboard(
     for (const [name, pick] of Object.entries(matchPicks)) {
       const row = byName.get(name)
       if (!row) continue
-      const pts = scorePick(pick, match.actual)
+      const pts = match.ko ? scoreKoPick(pick, match.actual, match.ko.advanced) : scorePick(pick, match.actual)
       row.points += pts
       row.graded++
       if (pts === 3) row.exact++
@@ -95,11 +107,12 @@ export async function savePick(
   matchId: string,
   user: string,
   ga: number,
-  gb: number
+  gb: number,
+  adv?: 'home' | 'away'
 ): Promise<void> {
   const all = await getAllPicks()
   const forMatch = all[matchId] ?? {}
-  forMatch[user] = { ga, gb }
+  forMatch[user] = adv ? { ga, gb, adv } : { ga, gb }
   all[matchId] = forMatch
   await redis.set(KEY, all)
 }

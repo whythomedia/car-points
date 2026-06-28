@@ -22,13 +22,14 @@ import {
 import { SIGHT_WORDS } from '@/lib/games/sightwords'
 import { getBlimpReport } from '@/lib/blimp'
 import { getTodayRiddle } from '@/lib/riddles'
-import { clearResult, getResults, saveResult } from '@/lib/worldcup/store'
-import { buildLeaderboard, getAllPicks, savePick, type GradedMatch } from '@/lib/worldcup/picks'
-import { groupMatches } from '@/lib/worldcup/predict'
-import { GROUPS } from '@/lib/worldcup/data'
-import { matchId } from '@/lib/worldcup/fixtures'
+import { clearResult, saveResult } from '@/lib/worldcup/store'
+import { savePick } from '@/lib/worldcup/picks'
+import { clearKoResult, saveKoResult } from '@/lib/worldcup/ko-store'
+import { ROUND_META, koMatchId, resolveBracket } from '@/lib/worldcup/bracket'
+import { getKoResults } from '@/lib/worldcup/ko-store'
+import { loadCombinedLeaderboard } from '@/lib/worldcup/leaderboard'
 import { STATES } from '@/lib/games/states'
-import { isPushConfigured, notifyResult, notifyStateSpotted, sendPushToAll } from '@/lib/push'
+import { isPushConfigured, notifyKnockout, notifyResult, notifyStateSpotted, sendPushToAll } from '@/lib/push'
 
 export async function updateScore(kidName: string, delta: number): Promise<void> {
   await updateKidPoints(kidName, delta)
@@ -75,19 +76,59 @@ export async function saveWorldCupResult(
   revalidatePath('/worldcup')
   revalidatePath('/worldcup/picks')
 
-  // Recompute the leaderboard with the new result and push it out.
+  // Recompute the combined (group + knockout) leaderboard and push it out.
   try {
-    const [results, picks] = await Promise.all([getResults(), getAllPicks()])
-    const played: GradedMatch[] = GROUPS.flatMap((g) =>
-      groupMatches(g, results)
-        .filter((m) => m.played)
-        .map((m) => ({ matchId: matchId(g.id, m.home.name, m.away.name), actual: { ga: m.ga, gb: m.gb } }))
-    )
-    const leaderboard = buildLeaderboard(picks, played)
+    const leaderboard = await loadCombinedLeaderboard()
     await notifyResult(`${a} ${cga}–${cgb} ${b}`, leaderboard)
   } catch {
     // push failures shouldn't block saving the result
   }
+}
+
+const clampGoals = (n: number) => Math.max(0, Math.min(20, Math.round(Number(n) || 0)))
+
+export async function saveWorldCupKoResult(
+  no: number,
+  ga: number,
+  gb: number,
+  advanced?: 'home' | 'away'
+): Promise<void> {
+  const cga = clampGoals(ga)
+  const cgb = clampGoals(gb)
+  await saveKoResult(no, cga, cgb, advanced)
+  revalidatePath('/worldcup/knockout')
+  revalidatePath('/worldcup/picks')
+  revalidatePath('/worldcup')
+
+  // Announce who advanced, with the updated combined leaderboard.
+  try {
+    const leaderboard = await loadCombinedLeaderboard()
+    const m = resolveBracket(await getKoResults()).find((r) => r.no === no)
+    if (m && m.winner && m.home && m.away) {
+      await notifyKnockout(`${m.home} ${cga}–${cgb} ${m.away}`, m.winner, ROUND_META[m.round].label, leaderboard)
+    }
+  } catch {
+    // push failures shouldn't block saving the result
+  }
+}
+
+export async function clearWorldCupKoResult(no: number): Promise<void> {
+  await clearKoResult(no)
+  revalidatePath('/worldcup/knockout')
+  revalidatePath('/worldcup/picks')
+  revalidatePath('/worldcup')
+}
+
+export async function saveWorldCupKoPick(
+  no: number,
+  user: string,
+  ga: number,
+  gb: number,
+  adv?: 'home' | 'away'
+): Promise<void> {
+  await savePick(koMatchId(no), user, clampGoals(ga), clampGoals(gb), adv)
+  revalidatePath('/worldcup/picks')
+  revalidatePath('/worldcup/knockout')
 }
 
 export async function clearWorldCupResult(
