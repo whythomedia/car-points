@@ -27,8 +27,8 @@ A mobile-first PWA for gamifying family road trips. Parents award points to kids
 | `/games/flags` | Public | World Cup flag quiz (+10 once per kid) |
 | `/games/plates` | Public | License-plate game — shared 50-state board |
 | `/games/reading` | Public | Zoe's Edmark sight-word game (+5/day) |
-| `/worldcup` | Public | 2026 World Cup group-stage predictions |
-| `/worldcup/picks` | Public | Family pick'em — predict scores, earn points |
+| `/worldcup` | Public | Family pick'em — predict scores, earn points (leaderboard) |
+| `/worldcup/knockout` | Public | Knockout bracket (R32 → Final) — tracker + picks |
 | `/celebrate` | Public | Confetti page (`?kid=Name&action=...`) |
 | `/admin` | Password | Award/deduct points per kid |
 
@@ -84,8 +84,9 @@ Connect a custom domain in the Vercel dashboard and point a CNAME to \`cname.ver
 - **Offline support** — \`public/sw.js\` caches the app shell (network-first, cache fallback; bypassed on localhost) and is registered app-wide by \`app/ServiceWorkerRegister.tsx\` in production. The reading game runs fully offline (local TTS voice preferred, emoji pictures, bundled word list); finished rounds are queued in \`localStorage\` and synced when the connection returns.
 - **Route stops** — \`app/map/page.tsx\` (\`STOPS\`/\`ROUTE\`, coordinates in SVG viewBox space)
 - **Map art** — \`public/usmap_outlines.png\`, \`usmap_animals.png\`, \`usmap_labels.png\`
-- **World Cup** — \`lib/worldcup/fixtures.ts\` is the single source of truth for the schedule (match no, date, kickoff, venue, real home/away, and final score once played). Team power ratings live in \`lib/worldcup/data.ts\`. Enter results live from the \`/worldcup\` page; unplayed matches are predicted by \`lib/worldcup/predict.ts\`. The standings page shows a Through / Likely through / Likely out / Out outlook (confirmed from results, "likely" from the projection). Top 2 per group plus the 8 best third-placed teams advance.
-- **Family pick'em** — \`/worldcup/picks\`. Each person predicts a score per match; exact score = 3 pts, correct outcome = 1 pt. Players and their accent colors live in \`lib/worldcup/brand.ts\` (\`PREDICTORS\`); group colors and the \`text_on\` legibility rule come from the same module (per the project style guide). Picks and scores are stored in Redis.
+- **World Cup** — \`/worldcup\` is the section landing: the family pick'em leaderboard and per-match picks. Group fixtures/results live in \`lib/worldcup/fixtures.ts\` + \`store.ts\`; the knockout bracket (M73–M104) lives in \`lib/worldcup/bracket.ts\` with results in \`ko-store.ts\`. \`lib/worldcup/leaderboard.ts\` builds one combined standing across both stages.
+- **Family pick'em** — \`/worldcup\`. Each person predicts a score per match; exact score = 3 pts, correct outcome = 1 pt. Knockout matches appear once their teams are set and score the same way, with "advances" as the outcome (penalty toggle for level scores). Players/colors live in \`lib/worldcup/brand.ts\` (\`PREDICTORS\`). Picks and scores are stored in Redis.
+- **Knockout bracket** — \`/worldcup/knockout\` renders R32 → Final round by round; entering a result auto-advances the winner via \`resolveBracket()\`. Built from the official FIFA match numbers; later rounds fill in as earlier ones finish.
 - **Flag badges** — circular "ball" flags in \`public/flags/<iso>.png\` (256px), mapped to teams in \`lib/worldcup/flags.ts\` and rendered by \`app/worldcup/TeamFlag.tsx\` (falls back to the team emoji if an asset is missing).
 
 ## PWA

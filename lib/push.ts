@@ -114,7 +114,7 @@ export async function notifyResult(
   await sendPushToAll({
     title: `⚽ Final: ${matchLabel}`,
     body: standings ? `Leaderboard — ${standings}` : 'Tap to see the updated picks.',
-    url: '/worldcup/picks',
+    url: '/worldcup',
     tag: 'leaderboard',
   })
 }

@@ -122,14 +122,12 @@ export default async function KnockoutPage() {
             <h1 className="text-2xl font-black text-slate-900 dark:text-white">🏆 Knockout Bracket</h1>
             <p className="text-sm text-slate-500 dark:text-slate-400">Round of 32 → Final</p>
           </div>
-          <div className="flex shrink-0 flex-col items-end gap-1 text-sm">
-            <Link href="/worldcup" className="text-slate-500 hover:text-teal-600 dark:text-slate-400 dark:hover:text-teal-400">
-              Standings →
-            </Link>
-            <Link href="/worldcup/picks" className="text-slate-500 hover:text-teal-600 dark:text-slate-400 dark:hover:text-teal-400">
-              Picks →
-            </Link>
-          </div>
+          <Link
+            href="/worldcup"
+            className="shrink-0 rounded-full bg-teal-600 px-4 py-2 text-sm font-bold text-white hover:bg-teal-500"
+          >
+            ⚽ Picks →
+          </Link>
         </div>
 
         {champion && (
@@ -170,7 +168,7 @@ export default async function KnockoutPage() {
 
         <p className="mt-4 text-center text-xs text-slate-400 dark:text-slate-500">
           Winners flow into the next match automatically. Make your predictions on the{' '}
-          <Link href="/worldcup/picks" className="font-semibold text-teal-600 dark:text-teal-400">
+          <Link href="/worldcup" className="font-semibold text-teal-600 dark:text-teal-400">
             Picks
           </Link>{' '}
           page.
