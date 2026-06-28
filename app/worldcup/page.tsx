@@ -74,12 +74,20 @@ export default async function WorldCupPage() {
           <h1 className="text-2xl font-black text-slate-900 dark:text-white">🏆 World Cup 2026</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400">{played} of 72 group matches played</p>
         </div>
-        <Link
-          href="/worldcup/picks"
-          className="shrink-0 rounded-full bg-teal-600 px-4 py-2 text-sm font-bold text-white hover:bg-teal-500"
-        >
-          Family picks →
-        </Link>
+        <div className="flex shrink-0 flex-col items-end gap-2">
+          <Link
+            href="/worldcup/picks"
+            className="rounded-full bg-teal-600 px-4 py-2 text-sm font-bold text-white hover:bg-teal-500"
+          >
+            Family picks →
+          </Link>
+          <Link
+            href="/worldcup/knockout"
+            className="rounded-full bg-amber-500 px-4 py-2 text-sm font-bold text-white hover:bg-amber-400"
+          >
+            🏆 Bracket →
+          </Link>
+        </div>
       </div>
 
       {/* Legend */}

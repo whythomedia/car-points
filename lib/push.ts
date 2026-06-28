@@ -85,6 +85,24 @@ export async function notifyStateSpotted(stateName: string, count: number, total
   })
 }
 
+export async function notifyKnockout(
+  matchLabel: string,
+  advancer: string,
+  round: string,
+  leaderboard: { name: string; points: number }[]
+): Promise<void> {
+  const standings = leaderboard
+    .slice(0, 4)
+    .map((r) => `${r.name} ${r.points}`)
+    .join(' · ')
+  await sendPushToAll({
+    title: `⚽ ${round}: ${matchLabel}`,
+    body: `${advancer} advance!${standings ? ` · ${standings}` : ''}`,
+    url: '/worldcup/knockout',
+    tag: 'knockout',
+  })
+}
+
 export async function notifyResult(
   matchLabel: string,
   leaderboard: { name: string; points: number }[]
