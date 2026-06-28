@@ -74,7 +74,6 @@ export async function saveWorldCupResult(
   const cgb = Math.max(0, Math.min(20, Math.round(Number(gb) || 0)))
   await saveResult(groupId, a, b, cga, cgb)
   revalidatePath('/worldcup')
-  revalidatePath('/worldcup/picks')
 
   // Recompute the combined (group + knockout) leaderboard and push it out.
   try {
@@ -97,7 +96,6 @@ export async function saveWorldCupKoResult(
   const cgb = clampGoals(gb)
   await saveKoResult(no, cga, cgb, advanced)
   revalidatePath('/worldcup/knockout')
-  revalidatePath('/worldcup/picks')
   revalidatePath('/worldcup')
 
   // Announce who advanced, with the updated combined leaderboard.
@@ -115,7 +113,6 @@ export async function saveWorldCupKoResult(
 export async function clearWorldCupKoResult(no: number): Promise<void> {
   await clearKoResult(no)
   revalidatePath('/worldcup/knockout')
-  revalidatePath('/worldcup/picks')
   revalidatePath('/worldcup')
 }
 
@@ -127,7 +124,7 @@ export async function saveWorldCupKoPick(
   adv?: 'home' | 'away'
 ): Promise<void> {
   await savePick(koMatchId(no), user, clampGoals(ga), clampGoals(gb), adv)
-  revalidatePath('/worldcup/picks')
+  revalidatePath('/worldcup')
   revalidatePath('/worldcup/knockout')
 }
 
@@ -275,5 +272,5 @@ export async function saveWorldCupPick(
 ): Promise<void> {
   const clean = (n: number) => Math.max(0, Math.min(20, Math.round(Number(n) || 0)))
   await savePick(matchId, user, clean(ga), clean(gb))
-  revalidatePath('/worldcup/picks')
+  revalidatePath('/worldcup')
 }

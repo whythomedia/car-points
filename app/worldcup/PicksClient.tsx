@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { saveWorldCupKoPick, saveWorldCupPick } from '@/app/actions'
 import { textOn, type Predictor } from '@/lib/worldcup/brand'
 import { scoreKoPick, scorePick, type AllPicks, type LeaderRow, type Pick } from '@/lib/worldcup/picks'
-import TeamFlag from '../TeamFlag'
+import TeamFlag from './TeamFlag'
 
 export type PickMatch = {
   matchId: string
