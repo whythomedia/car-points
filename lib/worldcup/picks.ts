@@ -24,13 +24,14 @@ export function scorePick(pick: Pick, actual: Pick): 0 | 1 | 3 {
   return outcome(pick) === outcome(actual) ? 1 : 0
 }
 
-// Knockout scoring: exact regulation/ET score = 3; otherwise picking the team
-// that actually advances = 1. The advancer of a pick is the higher score, or
-// `adv` when the picker predicted a level score.
+// Knockout scoring is advancer-first: pick the wrong team to go through and you
+// score 0 regardless of the scoreline. With the right advancer, an exact score
+// (including the exact level score before a shootout) = 3, otherwise = 1.
+// A pick's advancer is the higher score, or `adv` when a level score is predicted.
 export function scoreKoPick(pick: Pick, actual: Pick, advanced: 'home' | 'away'): 0 | 1 | 3 {
-  if (pick.ga === actual.ga && pick.gb === actual.gb) return 3
   const pickAdv = pick.ga > pick.gb ? 'home' : pick.gb > pick.ga ? 'away' : pick.adv
-  return pickAdv && pickAdv === advanced ? 1 : 0
+  if (pickAdv !== advanced) return 0
+  return pick.ga === actual.ga && pick.gb === actual.gb ? 3 : 1
 }
 
 export type LeaderRow = {
