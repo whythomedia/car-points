@@ -1,7 +1,7 @@
 import Image from 'next/image'
 import { getKids } from '@/lib/redis'
 import NotifyCard from './NotifyCard'
-import BlimpCard from './BlimpCard'
+import SchoolCountdown from './SchoolCountdown'
 
 const AVATARS = ['🐧', '🦓', '🐆', '🐼'] // Owen, Zoe, Max, Emma
 
@@ -45,7 +45,7 @@ export default async function HomePage() {
         Tap <strong className="text-slate-500 dark:text-slate-400">Games</strong> to earn bonus points
       </p>
 
-      <BlimpCard />
+      <SchoolCountdown />
     </div>
   )
 }

@@ -19,9 +19,8 @@ const LEVEL_CLASS = [
 function level(count: number, total: number): number {
   if (count <= 0) return 0
   if (count >= total) return 4
-  if (count <= 2) return 1
-  if (count <= 4) return 2
-  return 3
+  const f = count / total
+  return f < 0.34 ? 1 : f < 0.67 ? 2 : 3
 }
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
