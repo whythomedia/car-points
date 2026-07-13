@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useTransition } from 'react'
+import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { saveWorldCupKoPick, saveWorldCupPick } from '@/app/actions'
 import { textOn, type Predictor } from '@/lib/worldcup/brand'
@@ -30,12 +30,11 @@ export type PickMatch = {
 
 type Props = {
   users: Predictor[]
+  currentUser: Predictor | null // the signed-in player, or null (view-only)
   matches: PickMatch[]
   picks: AllPicks
   leaderboard: LeaderRow[]
 }
-
-const STORAGE_KEY = 'wc-pick-user'
 
 function GroupChip({ group, color }: { group: string; color: string }) {
   return (
@@ -99,18 +98,20 @@ function formatDay(iso: string): string {
   })
 }
 
-// Compact, tappable summary row — editing happens in the modal.
+// Compact summary row. Tappable to edit only when a player is signed in.
 function UpcomingRow({
   match,
   pick,
   onOpen,
+  interactive,
 }: {
   match: PickMatch
   pick?: { ga: number; gb: number }
   onOpen: () => void
+  interactive: boolean
 }) {
-  return (
-    <button onClick={onOpen} className="flex w-full items-center gap-2 py-2.5 text-left text-sm">
+  const inner = (
+    <>
       <StageChip match={match} />
       <span className="flex flex-1 items-center justify-end gap-1.5 text-right leading-tight text-slate-700 dark:text-slate-200">
         {match.homeName} <TeamFlag name={match.homeName} emoji={match.homeFlag} size={18} />
@@ -120,17 +121,29 @@ function UpcomingRow({
           <span className="font-black tabular-nums text-slate-900 dark:text-white">
             {pick.ga}–{pick.gb}
           </span>
-        ) : (
+        ) : interactive ? (
           <span className="font-bold text-teal-600 dark:text-teal-400">Pick</span>
+        ) : (
+          <span className="text-slate-300 dark:text-slate-600">–</span>
         )}
       </span>
       <span className="flex flex-1 items-center gap-1.5 text-left leading-tight text-slate-700 dark:text-slate-200">
         <TeamFlag name={match.awayName} emoji={match.awayFlag} size={18} /> {match.awayName}
       </span>
-      <svg className="h-4 w-4 shrink-0 text-slate-300 dark:text-slate-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-      </svg>
+      {interactive && (
+        <svg className="h-4 w-4 shrink-0 text-slate-300 dark:text-slate-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+        </svg>
+      )}
+    </>
+  )
+
+  return interactive ? (
+    <button onClick={onOpen} className="flex w-full items-center gap-2 py-2.5 text-left text-sm">
+      {inner}
     </button>
+  ) : (
+    <div className="flex w-full items-center gap-2 py-2.5 text-left text-sm">{inner}</div>
   )
 }
 
@@ -141,7 +154,7 @@ function CompletedRow({
   picks,
 }: {
   match: PickMatch
-  user: Predictor
+  user: Predictor | null
   picks: AllPicks
 }) {
   const actual = { ga: match.ga, gb: match.gb }
@@ -153,7 +166,7 @@ function CompletedRow({
       : match.gb > match.ga
         ? 'away'
         : 'draw'
-  const p = picks[match.matchId]?.[user.name]
+  const p = user ? picks[match.matchId]?.[user.name] : undefined
   const pts = p ? (isKo ? scoreKoPick(p, actual, match.advanced!) : scorePick(p, actual)) : null
 
   return (
@@ -170,17 +183,19 @@ function CompletedRow({
           <TeamFlag name={match.awayName} emoji={match.awayFlag} size={18} /> {match.awayName}
         </span>
       </div>
-      <div className="mt-1 flex items-center justify-center gap-1.5 text-xs">
-        {p ? (
-          <>
-            <span style={{ color: user.color }} className="font-bold">{user.name}</span>
-            <span className="tabular-nums text-slate-500 dark:text-slate-400">{p.ga}–{p.gb}</span>
-            <PointChip pts={pts!} />
-          </>
-        ) : (
-          <span className="text-slate-300 dark:text-slate-600">no pick</span>
-        )}
-      </div>
+      {user && (
+        <div className="mt-1 flex items-center justify-center gap-1.5 text-xs">
+          {p ? (
+            <>
+              <span style={{ color: user.color }} className="font-bold">{user.name}</span>
+              <span className="tabular-nums text-slate-500 dark:text-slate-400">{p.ga}–{p.gb}</span>
+              <PointChip pts={pts!} />
+            </>
+          ) : (
+            <span className="text-slate-300 dark:text-slate-600">no pick</span>
+          )}
+        </div>
+      )}
     </div>
   )
 }
@@ -322,22 +337,9 @@ function PickModal({
   )
 }
 
-export default function PicksClient({ users, matches, picks, leaderboard }: Props) {
-  const [user, setUser] = useState<Predictor>(users[0])
+export default function PicksClient({ users, currentUser, matches, picks, leaderboard }: Props) {
+  const user = currentUser
   const [editing, setEditing] = useState<PickMatch | null>(null)
-
-  // Restore the last picker after mount. Deferred so the first client render
-  // matches the server (users[0]) — no hydration mismatch, no cascading render.
-  useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY)
-    const found = users.find((u) => u.name === saved)
-    if (found) queueMicrotask(() => setUser(found))
-  }, [users])
-
-  function selectUser(u: Predictor) {
-    setUser(u)
-    localStorage.setItem(STORAGE_KEY, u.name)
-  }
 
   const upcoming = matches.filter((m) => !m.played)
   const completed = matches.filter((m) => m.played)
@@ -351,7 +353,7 @@ export default function PicksClient({ users, matches, picks, leaderboard }: Prop
           {leaderboard.map((r, i) => (
             <div
               key={r.name}
-              className={`flex items-center gap-2 rounded-lg px-2 py-1.5 ${r.name === user.name ? 'bg-slate-50 dark:bg-slate-700/50' : ''}`}
+              className={`flex items-center gap-2 rounded-lg px-2 py-1.5 ${r.name === user?.name ? 'bg-slate-50 dark:bg-slate-700/50' : ''}`}
             >
               <span className="w-4 text-center text-sm font-bold text-slate-400 dark:text-slate-500">{i + 1}</span>
               <span className="h-3 w-3 rounded-full" style={{ backgroundColor: r.color }} />
@@ -370,38 +372,24 @@ export default function PicksClient({ users, matches, picks, leaderboard }: Prop
         </p>
       </div>
 
-      {/* Who are you */}
-      <div>
-        <p className="mb-2 text-sm font-bold text-slate-700 dark:text-slate-200">Who&apos;s picking?</p>
-        <div className="flex flex-wrap gap-2">
-          {users.map((u) => {
-            const active = u.name === user.name
-            return (
-              <button
-                key={u.name}
-                onClick={() => selectUser(u)}
-                className={`rounded-full px-4 py-2 text-sm font-bold transition ${active ? '' : 'opacity-50'}`}
-                style={{ backgroundColor: u.color, color: textOn(u.color) }}
-              >
-                {u.name}
-              </button>
-            )
-          })}
-        </div>
-      </div>
-
       {/* Upcoming — make picks */}
       <div>
         <h2 className="mb-1 font-black text-slate-900 dark:text-white">
-          Your picks
+          {user ? 'Your picks' : 'Upcoming'}
           <span className="ml-2 text-sm font-normal text-slate-400 dark:text-slate-500">
             {upcoming.length} matches to play
           </span>
         </h2>
-        <p className="mb-3 text-xs text-slate-500 dark:text-slate-400">
-          Playing as <strong style={{ color: user.color }}>{user.name}</strong>. Tap a match to
-          predict the score.
-        </p>
+        {user ? (
+          <p className="mb-3 text-xs text-slate-500 dark:text-slate-400">
+            Playing as <strong style={{ color: user.color }}>{user.name}</strong>. Tap a match to
+            predict the score.
+          </p>
+        ) : (
+          <p className="mb-3 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800 dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-200">
+            Sign in as a player (Dad, Mom, Max or Owen) on the <strong>Points</strong> tab to make picks.
+          </p>
+        )}
         {upcoming.length === 0 ? (
           <p className="text-center text-sm text-slate-400 dark:text-slate-500">
             Nothing to pick right now — check back when the next round is set. 🎉
@@ -419,7 +407,8 @@ export default function PicksClient({ users, matches, picks, leaderboard }: Prop
                     <UpcomingRow
                       key={m.matchId}
                       match={m}
-                      pick={picks[m.matchId]?.[user.name]}
+                      pick={user ? picks[m.matchId]?.[user.name] : undefined}
+                      interactive={!!user}
                       onOpen={() => setEditing(m)}
                     />
                   ))}
@@ -457,7 +446,7 @@ export default function PicksClient({ users, matches, picks, leaderboard }: Prop
         </div>
       )}
 
-      {editing && (
+      {editing && user && (
         <PickModal
           key={`${user.name}-${editing.matchId}`}
           match={editing}

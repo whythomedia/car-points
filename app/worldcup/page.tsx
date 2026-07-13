@@ -7,6 +7,7 @@ import { groupMatches } from '@/lib/worldcup/predict'
 import { GROUP_COLORS, PREDICTORS } from '@/lib/worldcup/brand'
 import { getAllPicks } from '@/lib/worldcup/picks'
 import { loadCombinedLeaderboard } from '@/lib/worldcup/leaderboard'
+import { getCurrentUser } from '@/lib/current-user'
 import PicksClient, { type PickMatch } from './PicksClient'
 
 export const metadata = {
@@ -14,12 +15,15 @@ export const metadata = {
 }
 
 export default async function WorldCupPage() {
-  const [results, koResults, picks, leaderboard] = await Promise.all([
+  const [results, koResults, picks, leaderboard, me] = await Promise.all([
     getResults(),
     getKoResults(),
     getAllPicks(),
     loadCombinedLeaderboard(),
+    getCurrentUser(),
   ])
+  // Restrict picking to the signed-in player if they're in the pool.
+  const currentUser = me ? PREDICTORS.find((p) => p.name === me.name) ?? null : null
 
   const groupPicks: PickMatch[] = GROUPS.flatMap((group) =>
     groupMatches(group, results).map((m) => ({
@@ -76,7 +80,7 @@ export default async function WorldCupPage() {
         </Link>
       </div>
 
-      <PicksClient users={PREDICTORS} matches={matches} picks={picks} leaderboard={leaderboard} />
+      <PicksClient users={PREDICTORS} currentUser={currentUser} matches={matches} picks={picks} leaderboard={leaderboard} />
     </div>
   )
 }
