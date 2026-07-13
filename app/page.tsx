@@ -3,7 +3,7 @@ import { getKids } from '@/lib/redis'
 import { getCurrentUser } from '@/lib/current-user'
 import NotifyCard from './NotifyCard'
 import SchoolCountdown from './SchoolCountdown'
-import UserSwitcher from './UserSwitcher'
+import UserButton from './UserButton'
 
 const AVATARS = ['🐧', '🦓', '🐆', '🐼'] // Owen, Zoe, Max, Emma
 
@@ -14,17 +14,16 @@ export default async function HomePage() {
     <div className="min-h-screen px-4 pt-6">
 
       {/* Header */}
-      <div className="mb-6 flex items-center gap-3">
-        <Image src="/vaughn_120.png" alt="Vaughn" width={60} height={60} className="rounded-full" />
-        <div>
-          <h1 className="text-2xl font-black text-slate-900 dark:text-white">Car Points</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400">California Road Trip</p>
+      <div className="mb-6 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <Image src="/vaughn_120.png" alt="Vaughn" width={60} height={60} className="rounded-full" />
+          <div>
+            <h1 className="text-2xl font-black text-slate-900 dark:text-white">Car Points</h1>
+            <p className="text-sm text-slate-500 dark:text-slate-400">Smithlet Summer</p>
+          </div>
         </div>
+        <UserButton current={me?.name ?? null} />
       </div>
-
-      <UserSwitcher current={me?.name ?? null} />
-
-      <NotifyCard />
 
       {/* Kids list */}
       <div className="flex flex-col gap-3">
@@ -54,6 +53,11 @@ export default async function HomePage() {
       </p>
 
       <SchoolCountdown />
+
+      {/* Trip alerts — opt into push notifications */}
+      <div className="mt-4">
+        <NotifyCard />
+      </div>
     </div>
   )
 }
