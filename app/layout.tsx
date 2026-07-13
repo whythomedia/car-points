@@ -38,12 +38,12 @@ function NavBar() {
           <span className="text-xs font-semibold">Points</span>
         </Link>
 
-        {/* Map */}
-        <Link href="/map" className="flex flex-col items-center gap-1 px-4 py-1 text-slate-500 hover:text-teal-600 transition-colors dark:text-slate-400 dark:hover:text-teal-400">
+        {/* Chores */}
+        <Link href="/chores" className="flex flex-col items-center gap-1 px-4 py-1 text-slate-500 hover:text-teal-600 transition-colors dark:text-slate-400 dark:hover:text-teal-400">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7l2 2 4-4" />
           </svg>
-          <span className="text-xs font-semibold">Map</span>
+          <span className="text-xs font-semibold">Chores</span>
         </Link>
 
         {/* Games */}
