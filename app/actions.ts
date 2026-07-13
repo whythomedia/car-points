@@ -29,7 +29,7 @@ import { ROUND_META, koMatchId, resolveBracket } from '@/lib/worldcup/bracket'
 import { getKoResults } from '@/lib/worldcup/ko-store'
 import { loadCombinedLeaderboard } from '@/lib/worldcup/leaderboard'
 import { STATES } from '@/lib/games/states'
-import { choreToday, setChoreDone } from '@/lib/chores'
+import { addExtraChore, choreToday, removeExtraChore, setChoreDone } from '@/lib/chores'
 import { getCurrentUser } from '@/lib/current-user'
 import { personByName, USER_COOKIE } from '@/lib/people'
 import { cookies } from 'next/headers'
@@ -58,6 +58,21 @@ export async function toggleChore(kid: string, taskId: string, done: boolean): P
   const me = await getCurrentUser()
   if (!me || me.name !== kid) return
   await setChoreDone(kid, taskId, choreToday(), done)
+  revalidatePath('/chores')
+}
+
+// One-off chores: only a parent can add/remove them, and only for today.
+export async function addChore(kid: string, label: string): Promise<void> {
+  const me = await getCurrentUser()
+  if (me?.role !== 'parent') return
+  await addExtraChore(kid, choreToday(), label)
+  revalidatePath('/chores')
+}
+
+export async function removeChore(kid: string, id: string): Promise<void> {
+  const me = await getCurrentUser()
+  if (me?.role !== 'parent') return
+  await removeExtraChore(kid, choreToday(), id)
   revalidatePath('/chores')
 }
 

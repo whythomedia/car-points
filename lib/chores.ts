@@ -64,6 +64,46 @@ export async function setChoreDone(kid: string, taskId: string, date: string, do
   await redis.set(KEY, log)
 }
 
+// --- One-off ("extra") chores a parent adds for a given kid on a given day ---
+
+export type ExtraLog = Record<string, Record<string, Task[]>> // date -> kid -> extra tasks
+const EXTRA_KEY = 'chores:extra'
+
+export async function getExtraChores(): Promise<ExtraLog> {
+  try {
+    return (await redis.get<ExtraLog>(EXTRA_KEY)) ?? {}
+  } catch {
+    return {}
+  }
+}
+
+export async function addExtraChore(kid: string, date: string, label: string): Promise<void> {
+  const clean = label.trim().slice(0, 40)
+  if (!clean) return
+  const extra = await getExtraChores()
+  const day = extra[date] ?? {}
+  const list = day[kid] ?? []
+  const id = `x-${Date.now().toString(36)}-${Math.floor(Math.random() * 1296).toString(36)}`
+  list.push({ id, label: clean, emoji: '⭐' })
+  day[kid] = list
+  extra[date] = day
+  await redis.set(EXTRA_KEY, extra)
+}
+
+export async function removeExtraChore(kid: string, date: string, id: string): Promise<void> {
+  const extra = await getExtraChores()
+  if (extra[date]?.[kid]) {
+    extra[date][kid] = extra[date][kid].filter((t) => t.id !== id)
+    await redis.set(EXTRA_KEY, extra)
+  }
+  // Also drop any completion of the removed task so it doesn't linger.
+  const log = await getChoreLog()
+  if (log[date]?.[kid]?.includes(id)) {
+    log[date][kid] = log[date][kid].filter((x) => x !== id)
+    await redis.set(KEY, log)
+  }
+}
+
 // --- Pure helpers for the board / heatmap ---
 
 const parse = (s: string) => new Date(s + 'T12:00:00Z')
@@ -81,9 +121,11 @@ export type KidBoard = {
   name: string
   emoji: string
   color: string
-  tasks: Task[]
+  tasks: Task[] // today's tasks (base + any extras)
+  extraIds: string[] // which of `tasks` are one-off extras (removable by a parent)
   doneIds: string[]
-  total: number
+  total: number // today's task count (for the header)
+  baseTotal: number // fixed denominator for the heatmap percentage
   weeks: DayCell[][] // columns of 7 days (Sun→Sat)
   current: number // current streak of active days
   longest: number // longest streak of active days
@@ -91,14 +133,16 @@ export type KidBoard = {
 
 const GRID_WEEKS = 6 // recent history is what matters; keeps the grid compact
 
-export function buildKidBoard(log: ChoreLog, kidName: string, today: string): KidBoard {
+export function buildKidBoard(log: ChoreLog, extra: ExtraLog, kidName: string, today: string): KidBoard {
   const kid = KIDS.find((k) => k.name === kidName)!
-  const tasks = tasksForKid(kidName)
-  const total = tasks.length
-  const valid = new Set(tasks.map((t) => t.id))
-  const count = (date: string) => (log[date]?.[kidName] ?? []).filter((id) => valid.has(id)).length
+  const base = tasksForKid(kidName)
 
-  // Grid: start on the Sunday ~13 weeks back, run through today.
+  // The heatmap just counts how much got done each day (volume), shaded as a
+  // percentage of the base task list. Extras add to the count (and can push a
+  // day to 100%). No per-day denominator needed.
+  const countOn = (date: string) => (log[date]?.[kidName] ?? []).length
+
+  // Grid: start on the Sunday ~GRID_WEEKS back, run through today.
   let start = addDays(today, -((GRID_WEEKS - 1) * 7))
   start = addDays(start, -dow(start))
   const numWeeks = Math.floor(daysBetween(start, today) / 7) + 1
@@ -107,13 +151,13 @@ export function buildKidBoard(log: ChoreLog, kidName: string, today: string): Ki
     const days: DayCell[] = []
     for (let d = 0; d < 7; d++) {
       const date = addDays(start, w * 7 + d)
-      days.push({ date, count: count(date), future: date > today })
+      days.push({ date, count: countOn(date), future: date > today })
     }
     weeks.push(days)
   }
 
   // Streaks: an "active" day = at least one task done.
-  const active = (date: string) => count(date) >= 1
+  const active = (date: string) => countOn(date) >= 1
   let current = 0
   let cursor = active(today) ? today : addDays(today, -1)
   while (active(cursor)) {
@@ -131,6 +175,21 @@ export function buildKidBoard(log: ChoreLog, kidName: string, today: string): Ki
     }
   }
 
-  const doneIds = (log[today]?.[kidName] ?? []).filter((id) => valid.has(id))
-  return { name: kid.name, emoji: kid.emoji, color: kid.color, tasks, doneIds, total, weeks, current, longest }
+  const todaysExtras = extra[today]?.[kidName] ?? []
+  const tasks = [...base, ...todaysExtras]
+  const validToday = new Set(tasks.map((t) => t.id))
+  const doneIds = (log[today]?.[kidName] ?? []).filter((id) => validToday.has(id))
+  return {
+    name: kid.name,
+    emoji: kid.emoji,
+    color: kid.color,
+    tasks,
+    extraIds: todaysExtras.map((t) => t.id),
+    doneIds,
+    total: tasks.length,
+    baseTotal: base.length,
+    weeks,
+    current,
+    longest,
+  }
 }

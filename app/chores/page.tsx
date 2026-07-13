@@ -1,4 +1,4 @@
-import { KIDS, buildKidBoard, choreToday, getChoreLog } from '@/lib/chores'
+import { KIDS, buildKidBoard, choreToday, getChoreLog, getExtraChores } from '@/lib/chores'
 import { getCurrentUser } from '@/lib/current-user'
 import ChoresBoard from './ChoresBoard'
 
@@ -6,8 +6,8 @@ export const metadata = { title: 'Daily Chores' }
 
 export default async function ChoresPage() {
   const today = choreToday()
-  const [log, me] = await Promise.all([getChoreLog(), getCurrentUser()])
-  const boards = KIDS.map((k) => buildKidBoard(log, k.name, today))
+  const [log, extra, me] = await Promise.all([getChoreLog(), getExtraChores(), getCurrentUser()])
+  const boards = KIDS.map((k) => buildKidBoard(log, extra, k.name, today))
   // A signed-in kid sees only their own card; parents (and signed-out) see everyone.
   const kids = me?.role === 'kid' ? boards.filter((b) => b.name === me.name) : boards
 
