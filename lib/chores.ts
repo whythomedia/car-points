@@ -20,6 +20,7 @@ export const SHARED_TASKS: Task[] = [
   { id: 'read', label: 'Read', emoji: '📖' },
   { id: 'art', label: 'Art Project', emoji: '🎨' },
   { id: 'room', label: 'Clean Room', emoji: '🧹' },
+  { id: 'laundry', label: 'Laundry', emoji: '🧺' },
 ]
 
 // Each kid's individual chore.
@@ -91,7 +92,7 @@ export type KidBoard = {
   longest: number // longest streak of active days
 }
 
-const GRID_WEEKS = 13 // ~a season, fits a phone; scrolls if it grows
+const GRID_WEEKS = 6 // recent history is what matters; keeps the grid compact
 
 export function buildKidBoard(log: ChoreLog, kidName: string, today: string): KidBoard {
   const kid = KIDS.find((k) => k.name === kidName)!
