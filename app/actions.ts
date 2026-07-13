@@ -29,12 +29,18 @@ import { ROUND_META, koMatchId, resolveBracket } from '@/lib/worldcup/bracket'
 import { getKoResults } from '@/lib/worldcup/ko-store'
 import { loadCombinedLeaderboard } from '@/lib/worldcup/leaderboard'
 import { STATES } from '@/lib/games/states'
+import { choreToday, setChoreDone } from '@/lib/chores'
 import { isPushConfigured, notifyKnockout, notifyResult, notifyStateSpotted, sendPushToAll } from '@/lib/push'
 
 export async function updateScore(kidName: string, delta: number): Promise<void> {
   await updateKidPoints(kidName, delta)
   revalidatePath('/')
   revalidatePath('/admin')
+}
+
+export async function toggleChore(kid: string, taskId: string, done: boolean): Promise<void> {
+  await setChoreDone(kid, taskId, choreToday(), done)
+  revalidatePath('/chores')
 }
 
 export async function checkAdminPassword(password: string): Promise<boolean> {

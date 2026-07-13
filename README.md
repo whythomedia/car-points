@@ -21,7 +21,8 @@ A mobile-first PWA for gamifying family road trips. Parents award points to kids
 | Route | Access | Description |
 |---|---|---|
 | `/` | Public | Points scoreboard |
-| `/map` | Public | Trip route map (pinch/drag) |
+| `/chores` | Public | Summer daily chores — check-off board + GitHub-style contribution grid |
+| `/map` | Public | Trip route map (pinch/drag) — built, not in the nav for now |
 | `/games` | Public | Games hub |
 | `/bonus` | Public | Daily riddle (+5) |
 | `/games/flags` | Public | World Cup flag quiz (+10 once per kid) |
@@ -82,6 +83,7 @@ Connect a custom domain in the Vercel dashboard and point a CNAME to \`cname.ver
 - **License-plate game** — \`lib/games/states.ts\` (all 50 states). Shared board in Redis; checking a state asks for confirmation. Icons in \`public/stateflags/<slug>.png\` (\`flag: false\` would fall back to an abbreviation badge).
 - **Zoe's reading** — \`lib/games/sightwords.ts\` (Edmark Level 1 words in lesson order; \`WORD_EMOJI\` supplies picture cues). Four modes (flashcards, picture→word, hear→type, review cards) with browser TTS audio, +5/day (Zoe only). The active word range and per-word mastery (correct/incorrect + typed misspellings) live in Redis and are managed from **/admin** — add the next word with a click. \`PRACTICE_THROUGH_LESSON\` is just the default before any admin change.
 - **Offline support** — \`public/sw.js\` caches the app shell (network-first, cache fallback; bypassed on localhost) and is registered app-wide by \`app/ServiceWorkerRegister.tsx\` in production. The reading game runs fully offline (local TTS voice preferred, emoji pictures, bundled word list); finished rounds are queued in \`localStorage\` and synced when the connection returns.
+- **Daily chores** — \`lib/chores.ts\` (\`SHARED_TASKS\` + per-kid \`CHORE_BY_KID\`; edit these to change the list). Completion is one Redis blob keyed by Central-time day; no points — each kid gets a contribution grid (sequential teal ramp) + streaks. The bottom nav shows Chores in place of Map for now.
 - **Route stops** — \`app/map/page.tsx\` (\`STOPS\`/\`ROUTE\`, coordinates in SVG viewBox space)
 - **Map art** — \`public/usmap_outlines.png\`, \`usmap_animals.png\`, \`usmap_labels.png\`
 - **World Cup** — \`/worldcup\` is the section landing: the family pick'em leaderboard and per-match picks. Group fixtures/results live in \`lib/worldcup/fixtures.ts\` + \`store.ts\`; the knockout bracket (M73–M104) lives in \`lib/worldcup/bracket.ts\` with results in \`ko-store.ts\`. \`lib/worldcup/leaderboard.ts\` builds one combined standing across both stages.
