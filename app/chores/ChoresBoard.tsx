@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { toggleChore } from '@/app/actions'
+import { addChore, removeChore, toggleChore } from '@/app/actions'
 import type { DayCell, KidBoard } from '@/lib/chores'
 
 // Sequential teal ramp. Light surface: light→dark as magnitude rises. Dark
@@ -16,10 +16,12 @@ const LEVEL_CLASS = [
   'bg-teal-600 dark:bg-teal-300',
 ]
 
+// Percentage of the base task list done that day, mapped to the nearest shade.
+// Extras can push a day past 100% → capped at the darkest.
 function level(count: number, total: number): number {
   if (count <= 0) return 0
-  if (count >= total) return 4
   const f = count / total
+  if (f >= 1) return 4
   return f < 0.34 ? 1 : f < 0.67 ? 2 : 3
 }
 
@@ -52,7 +54,7 @@ function Heatmap({ weeks, total, today }: { weeks: DayCell[][]; total: number; t
                 ) : (
                   <div
                     key={cell.date}
-                    title={`${cell.date} · ${cell.count}/${total} done`}
+                    title={`${cell.date} · ${cell.count} done`}
                     className={`h-3 w-3 rounded-[3px] ${LEVEL_CLASS[level(cell.count, total)]} ${
                       cell.date === today ? 'ring-2 ring-teal-600 ring-offset-1 dark:ring-teal-300 dark:ring-offset-slate-800' : ''
                     }`}
@@ -67,9 +69,21 @@ function Heatmap({ weeks, total, today }: { weeks: DayCell[][]; total: number; t
   )
 }
 
-function KidCard({ kid, today, editable }: { kid: KidBoard; today: string; editable: boolean }) {
+function KidCard({
+  kid,
+  today,
+  editable,
+  isParent,
+}: {
+  kid: KidBoard
+  today: string
+  editable: boolean
+  isParent: boolean
+}) {
   const router = useRouter()
   const [done, setDone] = useState<Set<string>>(() => new Set(kid.doneIds))
+  const [adding, setAdding] = useState(false)
+  const [label, setLabel] = useState('')
   const [, startTransition] = useTransition()
 
   const count = done.size
@@ -86,6 +100,24 @@ function KidCard({ kid, today, editable }: { kid: KidBoard; today: string; edita
     })
     startTransition(async () => {
       await toggleChore(kid.name, taskId, willDo)
+      router.refresh()
+    })
+  }
+
+  function submitAdd() {
+    const l = label.trim()
+    if (!l) return
+    setLabel('')
+    setAdding(false)
+    startTransition(async () => {
+      await addChore(kid.name, l)
+      router.refresh()
+    })
+  }
+
+  function remove(id: string) {
+    startTransition(async () => {
+      await removeChore(kid.name, id)
       router.refresh()
     })
   }
@@ -118,6 +150,7 @@ function KidCard({ kid, today, editable }: { kid: KidBoard; today: string; edita
       <div className="mb-3 flex flex-wrap gap-2">
         {kid.tasks.map((t) => {
           const checked = done.has(t.id)
+          const removable = isParent && kid.extraIds.includes(t.id)
           const base = `flex items-center gap-1.5 rounded-xl border px-3 py-2 text-sm font-bold ${
             checked
               ? 'border-teal-500 bg-teal-50 text-teal-700 dark:border-teal-600 dark:bg-teal-900/40 dark:text-teal-200'
@@ -138,14 +171,48 @@ function KidCard({ kid, today, editable }: { kid: KidBoard; today: string; edita
             <div key={t.id} className={`${base} ${checked ? '' : 'opacity-60'}`}>
               <span>{t.emoji}</span>
               {t.label}
-              {mark}
+              {removable ? (
+                <button onClick={() => remove(t.id)} className="ml-0.5 text-slate-400 hover:text-red-500" aria-label={`Remove ${t.label}`}>
+                  ✕
+                </button>
+              ) : (
+                mark
+              )}
             </div>
           )
         })}
       </div>
 
+      {/* Parent: add a one-off task for today */}
+      {isParent &&
+        (adding ? (
+          <div className="mb-3 flex items-center gap-2">
+            <input
+              autoFocus
+              value={label}
+              onChange={(e) => setLabel(e.target.value.slice(0, 40))}
+              onKeyDown={(e) => e.key === 'Enter' && submitAdd()}
+              placeholder="One-off task…"
+              className="flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:border-teal-500 focus:outline-none dark:border-slate-600 dark:bg-slate-700 dark:text-white"
+            />
+            <button onClick={submitAdd} className="rounded-xl bg-teal-600 px-3 py-2 text-sm font-bold text-white hover:bg-teal-500">
+              Add
+            </button>
+            <button onClick={() => { setAdding(false); setLabel('') }} className="text-sm text-slate-400">
+              Cancel
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => setAdding(true)}
+            className="mb-3 rounded-xl border border-dashed border-slate-300 px-3 py-2 text-sm font-bold text-slate-500 hover:border-teal-400 hover:text-teal-600 dark:border-slate-600 dark:text-slate-400"
+          >
+            ➕ Add a task
+          </button>
+        ))}
+
       {/* Contribution grid */}
-      <Heatmap weeks={kid.weeks} total={kid.total} today={today} />
+      <Heatmap weeks={kid.weeks} total={kid.baseTotal} today={today} />
       {kid.longest > 0 && (
         <p className="mt-1.5 text-[11px] text-slate-400 dark:text-slate-500">
           Longest streak: {kid.longest} {kid.longest === 1 ? 'day' : 'days'}
@@ -165,20 +232,27 @@ export default function ChoresBoard({
   currentName: string | null
 }) {
   const isKid = kids.some((k) => k.name === currentName)
+  const isParent = !!currentName && !isKid
   return (
     <div className="space-y-4">
       {!currentName ? (
         <p className="rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-center text-sm font-semibold text-amber-800 dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-200">
           👋 Pick who you are on the <strong>Points</strong> tab to check off your chores.
         </p>
-      ) : !isKid ? (
+      ) : isParent ? (
         <p className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
-          Signed in as <strong>{currentName}</strong> — cheering the kids on! 👀
+          Signed in as <strong>{currentName}</strong> — tap <strong>➕ Add a task</strong> to set a one-off chore.
         </p>
       ) : null}
 
       {kids.map((kid) => (
-        <KidCard key={kid.name} kid={kid} today={today} editable={kid.name === currentName} />
+        <KidCard
+          key={kid.name}
+          kid={kid}
+          today={today}
+          editable={kid.name === currentName}
+          isParent={isParent}
+        />
       ))}
 
       {/* Legend */}
