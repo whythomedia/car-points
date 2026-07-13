@@ -1,12 +1,14 @@
 import Image from 'next/image'
 import { getKids } from '@/lib/redis'
+import { getCurrentUser } from '@/lib/current-user'
 import NotifyCard from './NotifyCard'
 import SchoolCountdown from './SchoolCountdown'
+import UserSwitcher from './UserSwitcher'
 
 const AVATARS = ['🐧', '🦓', '🐆', '🐼'] // Owen, Zoe, Max, Emma
 
 export default async function HomePage() {
-  const kids = await getKids()
+  const [kids, me] = await Promise.all([getKids(), getCurrentUser()])
 
   return (
     <div className="min-h-screen px-4 pt-6">
@@ -20,6 +22,8 @@ export default async function HomePage() {
         </div>
       </div>
 
+      <UserSwitcher current={me?.name ?? null} />
+
       <NotifyCard />
 
       {/* Kids list */}
@@ -27,7 +31,11 @@ export default async function HomePage() {
         {kids.map((kid, i) => (
           <div
             key={kid.name}
-            className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-5 py-4 dark:border-slate-700 dark:bg-slate-800"
+            className={`flex items-center justify-between rounded-2xl border bg-white px-5 py-4 dark:bg-slate-800 ${
+              me?.name === kid.name
+                ? 'border-teal-400 ring-2 ring-teal-300 dark:border-teal-600 dark:ring-teal-700'
+                : 'border-slate-200 dark:border-slate-700'
+            }`}
           >
             <div className="flex items-center gap-3">
               <span className="text-3xl">{AVATARS[i % AVATARS.length]}</span>

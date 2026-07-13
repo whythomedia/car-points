@@ -30,6 +30,9 @@ import { getKoResults } from '@/lib/worldcup/ko-store'
 import { loadCombinedLeaderboard } from '@/lib/worldcup/leaderboard'
 import { STATES } from '@/lib/games/states'
 import { choreToday, setChoreDone } from '@/lib/chores'
+import { getCurrentUser } from '@/lib/current-user'
+import { personByName, USER_COOKIE } from '@/lib/people'
+import { cookies } from 'next/headers'
 import { isPushConfigured, notifyKnockout, notifyResult, notifyStateSpotted, sendPushToAll } from '@/lib/push'
 
 export async function updateScore(kidName: string, delta: number): Promise<void> {
@@ -38,7 +41,22 @@ export async function updateScore(kidName: string, delta: number): Promise<void>
   revalidatePath('/admin')
 }
 
+// Set (or clear) the signed-in family member. Cookie so server components can
+// personalize without a flash. Revalidates the whole tree so every page updates.
+export async function setCurrentUser(name: string): Promise<void> {
+  const jar = await cookies()
+  if (name && personByName(name)) {
+    jar.set(USER_COOKIE, name, { path: '/', maxAge: 60 * 60 * 24 * 365, sameSite: 'lax' })
+  } else {
+    jar.delete(USER_COOKIE)
+  }
+  revalidatePath('/', 'layout')
+}
+
 export async function toggleChore(kid: string, taskId: string, done: boolean): Promise<void> {
+  // Restrict: you can only check off your own chores (must be signed in as them).
+  const me = await getCurrentUser()
+  if (!me || me.name !== kid) return
   await setChoreDone(kid, taskId, choreToday(), done)
   revalidatePath('/chores')
 }

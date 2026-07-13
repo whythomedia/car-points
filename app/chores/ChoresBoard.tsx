@@ -67,7 +67,7 @@ function Heatmap({ weeks, total, today }: { weeks: DayCell[][]; total: number; t
   )
 }
 
-function KidCard({ kid, today }: { kid: KidBoard; today: string }) {
+function KidCard({ kid, today, editable }: { kid: KidBoard; today: string; editable: boolean }) {
   const router = useRouter()
   const [done, setDone] = useState<Set<string>>(() => new Set(kid.doneIds))
   const [, startTransition] = useTransition()
@@ -76,6 +76,7 @@ function KidCard({ kid, today }: { kid: KidBoard; today: string }) {
   const allDone = count >= kid.total
 
   function toggle(taskId: string) {
+    if (!editable) return
     const willDo = !done.has(taskId)
     setDone((prev) => {
       const next = new Set(prev)
@@ -113,26 +114,32 @@ function KidCard({ kid, today }: { kid: KidBoard; today: string }) {
         </span>
       </div>
 
-      {/* Today's checklist */}
+      {/* Today's checklist — interactive only for the signed-in kid */}
       <div className="mb-3 flex flex-wrap gap-2">
         {kid.tasks.map((t) => {
           const checked = done.has(t.id)
-          return (
-            <button
-              key={t.id}
-              onClick={() => toggle(t.id)}
-              className={`flex items-center gap-1.5 rounded-xl border px-3 py-2 text-sm font-bold transition ${
-                checked
-                  ? 'border-teal-500 bg-teal-50 text-teal-700 dark:border-teal-600 dark:bg-teal-900/40 dark:text-teal-200'
-                  : 'border-slate-200 bg-white text-slate-600 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300'
-              }`}
-            >
+          const base = `flex items-center gap-1.5 rounded-xl border px-3 py-2 text-sm font-bold ${
+            checked
+              ? 'border-teal-500 bg-teal-50 text-teal-700 dark:border-teal-600 dark:bg-teal-900/40 dark:text-teal-200'
+              : 'border-slate-200 bg-white text-slate-600 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300'
+          }`
+          const mark = (
+            <span className={checked ? 'text-teal-600 dark:text-teal-300' : 'text-slate-300 dark:text-slate-600'}>
+              {checked ? '✓' : editable ? '＋' : '·'}
+            </span>
+          )
+          return editable ? (
+            <button key={t.id} onClick={() => toggle(t.id)} className={`${base} transition`}>
               <span>{t.emoji}</span>
               {t.label}
-              <span className={checked ? 'text-teal-600 dark:text-teal-300' : 'text-slate-300 dark:text-slate-600'}>
-                {checked ? '✓' : '＋'}
-              </span>
+              {mark}
             </button>
+          ) : (
+            <div key={t.id} className={`${base} ${checked ? '' : 'opacity-60'}`}>
+              <span>{t.emoji}</span>
+              {t.label}
+              {mark}
+            </div>
           )
         })}
       </div>
@@ -148,11 +155,30 @@ function KidCard({ kid, today }: { kid: KidBoard; today: string }) {
   )
 }
 
-export default function ChoresBoard({ today, kids }: { today: string; kids: KidBoard[] }) {
+export default function ChoresBoard({
+  today,
+  kids,
+  currentName,
+}: {
+  today: string
+  kids: KidBoard[]
+  currentName: string | null
+}) {
+  const isKid = kids.some((k) => k.name === currentName)
   return (
     <div className="space-y-4">
+      {!currentName ? (
+        <p className="rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-center text-sm font-semibold text-amber-800 dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-200">
+          👋 Pick who you are on the <strong>Points</strong> tab to check off your chores.
+        </p>
+      ) : !isKid ? (
+        <p className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
+          Signed in as <strong>{currentName}</strong> — cheering the kids on! 👀
+        </p>
+      ) : null}
+
       {kids.map((kid) => (
-        <KidCard key={kid.name} kid={kid} today={today} />
+        <KidCard key={kid.name} kid={kid} today={today} editable={kid.name === currentName} />
       ))}
 
       {/* Legend */}

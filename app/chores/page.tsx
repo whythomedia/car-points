@@ -1,13 +1,16 @@
 import Link from 'next/link'
 import { KIDS, buildKidBoard, choreToday, getChoreLog } from '@/lib/chores'
+import { getCurrentUser } from '@/lib/current-user'
 import ChoresBoard from './ChoresBoard'
 
 export const metadata = { title: 'Daily Chores' }
 
 export default async function ChoresPage() {
   const today = choreToday()
-  const log = await getChoreLog()
-  const kids = KIDS.map((k) => buildKidBoard(log, k.name, today))
+  const [log, me] = await Promise.all([getChoreLog(), getCurrentUser()])
+  const boards = KIDS.map((k) => buildKidBoard(log, k.name, today))
+  // Float the signed-in kid's card to the top.
+  const kids = me ? [...boards].sort((a, b) => Number(b.name === me.name) - Number(a.name === me.name)) : boards
 
   return (
     <div className="min-h-screen px-4 pt-6">
@@ -21,7 +24,7 @@ export default async function ChoresPage() {
         </Link>
       </div>
 
-      <ChoresBoard today={today} kids={kids} />
+      <ChoresBoard today={today} kids={kids} currentName={me?.name ?? null} />
     </div>
   )
 }

@@ -1,4 +1,5 @@
 import { redis } from './redis'
+import { KID_PEOPLE } from './people'
 
 // Summer daily chores. All tasks are simple daily checkboxes; completion is
 // tracked over time and shown as a GitHub-style contribution grid. No points —
@@ -7,12 +8,8 @@ import { redis } from './redis'
 export type Task = { id: string; label: string; emoji: string }
 export type Kid = { name: string; emoji: string; color: string }
 
-export const KIDS: Kid[] = [
-  { name: 'Owen', emoji: '🐧', color: '#0EA5E9' },
-  { name: 'Zoe', emoji: '🦓', color: '#8B5CF6' },
-  { name: 'Max', emoji: '🐆', color: '#F59E0B' },
-  { name: 'Emma', emoji: '🐼', color: '#EC4899' },
-]
+// Roster comes from the canonical people list (kids only).
+export const KIDS: Kid[] = KID_PEOPLE.map((p) => ({ name: p.name, emoji: p.emoji, color: p.color }))
 
 export const SHARED_TASKS: Task[] = [
   { id: 'workout', label: 'Work Out', emoji: '💪' },
