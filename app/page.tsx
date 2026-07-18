@@ -8,7 +8,6 @@ import ChoresToday from './ChoresToday'
 
 export default async function HomePage() {
   const me = await getCurrentUser()
-  const greeting = me ? `Hi, ${me.name}!` : 'Smithlet Summer'
 
   return (
     <div className="min-h-screen px-4 pt-6">
@@ -18,8 +17,8 @@ export default async function HomePage() {
         <div className="flex items-center gap-3">
           <Image src="/vaughn_120.png" alt="Vaughn" width={60} height={60} className="rounded-full" />
           <div>
-            <h1 className="text-2xl font-black text-slate-900 dark:text-white">{greeting}</h1>
-            <p className="text-sm text-slate-500 dark:text-slate-400">The Smithlet dashboard</p>
+            <h1 className="text-2xl font-black text-slate-900 dark:text-white">Family Dashboard</h1>
+            <p className="text-sm text-slate-500 dark:text-slate-400">Smithlet Summer</p>
           </div>
         </div>
         <UserButton current={me?.name ?? null} />

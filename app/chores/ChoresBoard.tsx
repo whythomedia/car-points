@@ -237,7 +237,7 @@ export default function ChoresBoard({
     <div className="space-y-4">
       {!currentName ? (
         <p className="rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-center text-sm font-semibold text-amber-800 dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-200">
-          👋 Pick who you are on the <strong>Points</strong> tab to check off your chores.
+          👋 Pick who you are on the <strong>Home</strong> tab to check off your chores.
         </p>
       ) : isParent ? (
         <p className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">

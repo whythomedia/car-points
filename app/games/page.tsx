@@ -9,7 +9,7 @@ export default async function GamesPage() {
   return (
     <div className="min-h-screen px-4 pt-6">
       <div className="mb-6">
-        <h1 className="text-2xl font-black text-slate-900 dark:text-white">Games</h1>
+        <h1 className="text-2xl font-black text-slate-900 dark:text-white">🎮 Games</h1>
         <p className="text-sm text-slate-500 dark:text-slate-400">Play to earn points</p>
       </div>
 
@@ -77,6 +77,21 @@ export default async function GamesPage() {
           <span className="rounded-full bg-teal-100 px-3 py-1 text-sm font-black text-teal-700 dark:bg-teal-900/50 dark:text-teal-300">
             +5/day
           </span>
+        </Link>
+
+        {/* World Cup */}
+        <Link
+          href="/worldcup"
+          className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-white p-4 transition-colors hover:border-teal-300 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-teal-700"
+        >
+          <span className="text-3xl">🏆</span>
+          <div className="flex-1">
+            <div className="font-black text-slate-900 dark:text-white">World Cup</div>
+            <div className="text-sm text-slate-500 dark:text-slate-400">Picks &amp; bracket standings</div>
+          </div>
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-slate-400 dark:text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
         </Link>
 
         {/* Coming soon */}

@@ -6,6 +6,23 @@ import { getCurrentUser } from '@/lib/current-user'
 // parents (and signed-out) see a compact row of everyone's done/total. Read-only
 // — tap through to the Chores tab to check things off.
 
+// Same sequential teal ramp as the Chores heatmap cell (index 0 = neutral).
+const LEVEL_CLASS = [
+  'bg-slate-100 dark:bg-slate-700',
+  'bg-teal-200 dark:bg-teal-900',
+  'bg-teal-400 dark:bg-teal-700',
+  'bg-teal-500 dark:bg-teal-500',
+  'bg-teal-600 dark:bg-teal-300',
+]
+
+// Percentage of the day's tasks done, mapped to the nearest shade.
+function level(done: number, total: number): number {
+  if (done <= 0 || total <= 0) return 0
+  const f = done / total
+  if (f >= 1) return 4
+  return f < 0.34 ? 1 : f < 0.67 ? 2 : 3
+}
+
 function ProgressPill({ done, total }: { done: number; total: number }) {
   const complete = total > 0 && done === total
   return (
@@ -44,6 +61,10 @@ export default async function ChoresToday() {
           <li key={b.name} className="flex items-center gap-3">
             <span className="text-xl">{b.emoji}</span>
             <span className="flex-1 truncate text-sm font-semibold text-slate-900 dark:text-white">{b.name}</span>
+            <span
+              className={`h-5 w-5 shrink-0 rounded ${LEVEL_CLASS[level(b.doneIds.length, b.baseTotal)]}`}
+              aria-hidden
+            />
             <ProgressPill done={b.doneIds.length} total={b.total} />
           </li>
         ))}
