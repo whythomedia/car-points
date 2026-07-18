@@ -8,11 +8,12 @@ import { KIDS, getChoreLog, setChoreRecord } from '@/lib/chores'
 //   POST /api/admin/chores  { date, kid, taskIds }    -> overwrite a record
 
 function authError(request: Request): Response | null {
-  const secret = process.env.CRON_SECRET
-  if (!secret) return Response.json({ ok: false, error: 'not configured' }, { status: 503 })
-  if (request.headers.get('authorization') !== `Bearer ${secret}`) {
-    return Response.json({ ok: false, error: 'unauthorized' }, { status: 401 })
-  }
+  // CLAUDE_KEY is the dedicated, independently-revocable admin key; CRON_SECRET
+  // is accepted too so the CLI keeps working.
+  const keys = [process.env.CLAUDE_KEY, process.env.CRON_SECRET].filter(Boolean) as string[]
+  if (keys.length === 0) return Response.json({ ok: false, error: 'not configured' }, { status: 503 })
+  const provided = (request.headers.get('authorization') ?? '').replace(/^Bearer\s+/, '')
+  if (!keys.includes(provided)) return Response.json({ ok: false, error: 'unauthorized' }, { status: 401 })
   return null
 }
 
