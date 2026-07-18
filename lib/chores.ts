@@ -45,22 +45,12 @@ export type ChoreLog = Record<string, Record<string, string[]>>
 
 const KEY = 'chores:log'
 
-// Hand-entered historical records, layered UNDER live Redis data (live edits win
-// per date+kid). Used to backfill days that happened before/without the app.
-const SEED_CHORES: ChoreLog = {
-  '2026-07-17': { Max: ['read', 'mow', 'art'] },
-}
-
 export async function getChoreLog(): Promise<ChoreLog> {
-  const out: ChoreLog = {}
-  for (const [date, byKid] of Object.entries(SEED_CHORES)) out[date] = { ...byKid }
   try {
-    const stored = (await redis.get<ChoreLog>(KEY)) ?? {}
-    for (const [date, byKid] of Object.entries(stored)) out[date] = { ...(out[date] ?? {}), ...byKid }
+    return (await redis.get<ChoreLog>(KEY)) ?? {}
   } catch {
-    // Redis unavailable: seed records still show.
+    return {}
   }
-  return out
 }
 
 // Overwrite a kid's completed base-task ids for a date (admin backfill). Invalid

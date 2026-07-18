@@ -21,24 +21,10 @@ function authError(request: Request): Response | null {
 }
 
 export async function GET(request: Request) {
-  const url = new URL(request.url)
-
-  // No-secret diagnostic: confirms whether the key is present in the running
-  // deployment and flags trailing whitespace. Reveals only lengths, no values.
-  if (url.searchParams.get('debug') === '1') {
-    const k = process.env.CLAUDE_KEY
-    return Response.json({
-      ok: true,
-      claudeKeyPresent: !!k,
-      claudeKeyLen: k?.length ?? 0,
-      claudeKeyTrimmedLen: k?.trim().length ?? 0,
-      cronSecretPresent: !!process.env.CRON_SECRET,
-    })
-  }
-
   const denied = authError(request)
   if (denied) return denied
 
+  const url = new URL(request.url)
   const date = url.searchParams.get('date')
   const kid = url.searchParams.get('kid')
   const log = await getChoreLog()
