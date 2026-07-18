@@ -63,6 +63,20 @@ export async function getChoreLog(): Promise<ChoreLog> {
   return out
 }
 
+// Overwrite a kid's completed base-task ids for a date (admin backfill). Invalid
+// ids are dropped; an empty list clears the day. Returns the ids applied.
+export async function setChoreRecord(kid: string, date: string, taskIds: string[]): Promise<string[]> {
+  const valid = new Set(tasksForKid(kid).map((t) => t.id))
+  const ids = [...new Set(taskIds)].filter((id) => valid.has(id))
+  const log = await getChoreLog()
+  const day = log[date] ?? {}
+  if (ids.length) day[kid] = ids
+  else delete day[kid]
+  log[date] = day
+  await redis.set(KEY, log)
+  return ids
+}
+
 export async function setChoreDone(kid: string, taskId: string, date: string, done: boolean): Promise<void> {
   const log = await getChoreLog()
   const day = log[date] ?? {}
