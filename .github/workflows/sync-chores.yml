@@ -1,0 +1,35 @@
+name: Sync chore records
+
+# Declarative chore backfill: when ops/chore-records.json changes on main, POST
+# each record to the admin endpoint (which writes Redis). This is how Claude
+# applies records — via a normal PR/commit — since it can't dispatch workflows
+# or reach the app directly. Records are idempotent (each POST overwrites that
+# day+kid), so re-running is safe.
+#
+# App URL is hardcoded (it's public, not a secret). Only secret needed: CLAUDE_KEY.
+on:
+  push:
+    branches: [main]
+    paths: ['ops/chore-records.json']
+  workflow_dispatch: {}
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply records
+        env:
+          APP_URL: https://car.smithlets.net
+          CLAUDE_KEY: ${{ secrets.CLAUDE_KEY }}
+        run: |
+          set -e
+          jq -c '.[]' ops/chore-records.json > /tmp/recs.ndjson
+          while IFS= read -r rec; do
+            echo "Applying: $rec"
+            curl -sS --fail-with-body -X POST "${APP_URL%/}/api/admin/chores" \
+              -H "Authorization: Bearer $CLAUDE_KEY" \
+              -H "Content-Type: application/json" \
+              -d "$rec"
+            echo
+          done < /tmp/recs.ndjson
