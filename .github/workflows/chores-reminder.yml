@@ -5,9 +5,8 @@ name: Chore reminder
 # endpoint also guards weekday + before the first day of school, and stops
 # itself once school starts.
 #
-# Required repo secrets (Settings -> Secrets and variables -> Actions):
-#   APP_URL      e.g. https://car.smithlets.net  (no trailing slash)
-#   CRON_SECRET  must match the CRON_SECRET env var set in Vercel
+# App URL is hardcoded (public). Only secret needed: CRON_SECRET (must match the
+# CRON_SECRET env var in Vercel).
 on:
   schedule:
     - cron: '0 15 * * 1-5' # 10:00 CT, Mon–Fri (GitHub may delay a few min)
@@ -18,6 +17,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Send chore reminder
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
-          curl -fsS "${{ secrets.APP_URL }}/api/cron/chores-reminder" \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
+          curl -fsS "https://car.smithlets.net/api/cron/chores-reminder" \
+            -H "Authorization: Bearer $CRON_SECRET"
