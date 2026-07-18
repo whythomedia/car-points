@@ -4,7 +4,7 @@
 //   node scripts/set-chore.mjs 2026-07-17 Max read,mow,art
 //   node scripts/set-chore.mjs 2026-07-17 Max ""      # clears the day
 //
-// Env required:  APP_URL (e.g. https://car.smithlets.net), CRON_SECRET
+// Env required:  APP_URL (e.g. https://car.smithlets.net), CLAUDE_KEY (or CRON_SECRET)
 //
 // Task ids: shared = workout, outside, read, art, room, laundry
 //           individual = Owen:weeds  Zoe:table  Max:mow  Emma:roomba
@@ -16,9 +16,9 @@ if (!date || !kid) {
 }
 
 const base = process.env.APP_URL
-const secret = process.env.CRON_SECRET
+const secret = process.env.CLAUDE_KEY || process.env.CRON_SECRET
 if (!base || !secret) {
-  console.error('Set APP_URL and CRON_SECRET env vars first.')
+  console.error('Set APP_URL and CLAUDE_KEY (or CRON_SECRET) env vars first.')
   process.exit(1)
 }
 
