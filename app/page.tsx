@@ -5,6 +5,7 @@ import SchoolCountdown from './SchoolCountdown'
 import UserButton from './UserButton'
 import UpcomingEvents from './UpcomingEvents'
 import ChoresToday from './ChoresToday'
+import BracketCongrats from './BracketCongrats'
 
 export default async function HomePage() {
   const me = await getCurrentUser()
@@ -26,6 +27,7 @@ export default async function HomePage() {
 
       {/* Dashboard cards */}
       <div className="flex flex-col gap-4">
+        <BracketCongrats />
         <UpcomingEvents />
         <ChoresToday />
         <SchoolCountdown />

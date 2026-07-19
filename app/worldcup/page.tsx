@@ -9,6 +9,7 @@ import { getAllPicks } from '@/lib/worldcup/picks'
 import { loadCombinedLeaderboard } from '@/lib/worldcup/leaderboard'
 import { getCurrentUser } from '@/lib/current-user'
 import PicksClient, { type PickMatch } from './PicksClient'
+import Confetti from '../Confetti'
 
 export const metadata = {
   title: 'World Cup 2026 — Family Picks',
@@ -67,6 +68,7 @@ export default async function WorldCupPage() {
 
   return (
     <div className="min-h-screen px-4 pt-6">
+      <Confetti durationMs={6000} />
       <div className="mb-4 flex items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-black text-slate-900 dark:text-white">⚽ Family Picks</h1>
