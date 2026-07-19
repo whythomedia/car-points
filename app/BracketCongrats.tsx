@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import Confetti from './Confetti'
 
 // One-off celebration banner for the World Cup bracket winner. Shows through the
@@ -9,7 +10,10 @@ export default function BracketCongrats() {
   if (todayKey > SHOW_THROUGH) return null
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-amber-300 bg-gradient-to-br from-amber-50 to-teal-50 p-5 text-center dark:border-amber-600/50 dark:from-amber-950/40 dark:to-teal-950/40">
+    <Link
+      href="/worldcup"
+      className="relative block overflow-hidden rounded-2xl border border-amber-300 bg-gradient-to-br from-amber-50 to-teal-50 p-5 text-center dark:border-amber-600/50 dark:from-amber-950/40 dark:to-teal-950/40"
+    >
       <Confetti contained durationMs={6000} />
       <div className="relative z-10">
         <div className="text-4xl">🏆</div>
@@ -18,6 +22,6 @@ export default function BracketCongrats() {
         </p>
         <p className="mt-0.5 text-sm font-semibold text-amber-700 dark:text-amber-300">🎉 Way to go, champ!</p>
       </div>
-    </div>
+    </Link>
   )
 }
