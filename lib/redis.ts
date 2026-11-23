@@ -139,7 +139,7 @@ export async function setReadingLevel(through: number): Promise<void> {
   await redis.set('reading:level', through)
 }
 
-// Flag quiz — a one-time +10 per kid for naming every World Cup flag.
+// Flag quiz — a one-time +10 per kid for naming every flag.
 const FLAG_QUIZ_KEY = 'flagquiz:winners'
 
 export async function getFlagQuizWinners(): Promise<string[]> {

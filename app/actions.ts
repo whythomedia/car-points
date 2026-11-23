@@ -22,18 +22,12 @@ import {
 import { SIGHT_WORDS } from '@/lib/games/sightwords'
 import { getBlimpReport } from '@/lib/blimp'
 import { getTodayRiddle } from '@/lib/riddles'
-import { clearResult, saveResult } from '@/lib/worldcup/store'
-import { savePick } from '@/lib/worldcup/picks'
-import { clearKoResult, saveKoResult } from '@/lib/worldcup/ko-store'
-import { ROUND_META, koMatchId, resolveBracket } from '@/lib/worldcup/bracket'
-import { getKoResults } from '@/lib/worldcup/ko-store'
-import { loadCombinedLeaderboard } from '@/lib/worldcup/leaderboard'
 import { STATES } from '@/lib/games/states'
 import { addExtraChore, choreToday, removeExtraChore, setChoreDone } from '@/lib/chores'
 import { getCurrentUser } from '@/lib/current-user'
 import { personByName, USER_COOKIE } from '@/lib/people'
 import { cookies } from 'next/headers'
-import { isPushConfigured, notifyKnockout, notifyResult, notifyStateSpotted, sendPushToAll } from '@/lib/push'
+import { isPushConfigured, notifyStateSpotted, sendPushToAll } from '@/lib/push'
 
 export async function updateScore(kidName: string, delta: number): Promise<void> {
   await updateKidPoints(kidName, delta)
@@ -100,80 +94,6 @@ export async function submitVaultAnswer(
   }
 
   return { success: false, error: "Not quite — try again!" }
-}
-
-export async function saveWorldCupResult(
-  groupId: string,
-  a: string,
-  b: string,
-  ga: number,
-  gb: number
-): Promise<void> {
-  const cga = Math.max(0, Math.min(20, Math.round(Number(ga) || 0)))
-  const cgb = Math.max(0, Math.min(20, Math.round(Number(gb) || 0)))
-  await saveResult(groupId, a, b, cga, cgb)
-  revalidatePath('/worldcup')
-
-  // Recompute the combined (group + knockout) leaderboard and push it out.
-  try {
-    const leaderboard = await loadCombinedLeaderboard()
-    await notifyResult(`${a} ${cga}–${cgb} ${b}`, leaderboard)
-  } catch {
-    // push failures shouldn't block saving the result
-  }
-}
-
-const clampGoals = (n: number) => Math.max(0, Math.min(20, Math.round(Number(n) || 0)))
-
-export async function saveWorldCupKoResult(
-  no: number,
-  ga: number,
-  gb: number,
-  advanced?: 'home' | 'away'
-): Promise<void> {
-  const cga = clampGoals(ga)
-  const cgb = clampGoals(gb)
-  await saveKoResult(no, cga, cgb, advanced)
-  revalidatePath('/worldcup/knockout')
-  revalidatePath('/worldcup')
-
-  // Announce who advanced, with the updated combined leaderboard.
-  try {
-    const leaderboard = await loadCombinedLeaderboard()
-    const m = resolveBracket(await getKoResults()).find((r) => r.no === no)
-    if (m && m.winner && m.home && m.away) {
-      await notifyKnockout(`${m.home} ${cga}–${cgb} ${m.away}`, m.winner, ROUND_META[m.round].label, leaderboard)
-    }
-  } catch {
-    // push failures shouldn't block saving the result
-  }
-}
-
-export async function clearWorldCupKoResult(no: number): Promise<void> {
-  await clearKoResult(no)
-  revalidatePath('/worldcup/knockout')
-  revalidatePath('/worldcup')
-}
-
-export async function saveWorldCupKoPick(
-  no: number,
-  user: string,
-  ga: number,
-  gb: number,
-  adv?: 'home' | 'away'
-): Promise<void> {
-  await savePick(koMatchId(no), user, clampGoals(ga), clampGoals(gb), adv)
-  revalidatePath('/worldcup')
-  revalidatePath('/worldcup/knockout')
-}
-
-export async function clearWorldCupResult(
-  groupId: string,
-  a: string,
-  b: string
-): Promise<void> {
-  await clearResult(groupId, a, b)
-  revalidatePath('/worldcup')
 }
 
 export async function fetchBlimp() {
@@ -301,15 +221,4 @@ export async function sendAdminMessage(
 
 export async function unsubscribeFromPush(endpoint: string): Promise<void> {
   await removePushSubscriptions([endpoint])
-}
-
-export async function saveWorldCupPick(
-  matchId: string,
-  user: string,
-  ga: number,
-  gb: number
-): Promise<void> {
-  const clean = (n: number) => Math.max(0, Math.min(20, Math.round(Number(n) || 0)))
-  await savePick(matchId, user, clean(ga), clean(gb))
-  revalidatePath('/worldcup')
 }

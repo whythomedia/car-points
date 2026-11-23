@@ -1,4 +1,4 @@
-import { FLAG_CODES } from '@/lib/worldcup/flags'
+import { FLAG_CODES } from '@/lib/games/flags'
 
 // Accepted alternate spellings/short names per country (besides the name
 // itself). Matching is accent- and punctuation-insensitive, so "cote divoire"

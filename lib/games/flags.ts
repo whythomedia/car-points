@@ -1,6 +1,6 @@
 // Team name → flag asset code. Badges live in /public/flags/<code>.png as
 // 256px circular "ball" crops (style guide §3). Keyed by the exact team names
-// used in data.ts.
+// used by the flag quiz.
 
 export const FLAG_CODES: Record<string, string> = {
   Mexico: 'mx',

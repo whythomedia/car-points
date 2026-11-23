@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { setCurrentUser } from './actions'
 import { PEOPLE, personByName } from '@/lib/people'
-import { textOn } from '@/lib/worldcup/brand'
+import { textOn } from '@/lib/color'
 
 // Top-right "who's using this" button. Shows the current user; tapping opens a
 // picker modal to switch (or sign out).
