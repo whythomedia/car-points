@@ -5,7 +5,6 @@ import SchoolCountdown from './SchoolCountdown'
 import UserButton from './UserButton'
 import UpcomingEvents from './UpcomingEvents'
 import ChoresToday from './ChoresToday'
-import BracketCongrats from './BracketCongrats'
 
 export default async function HomePage() {
   const me = await getCurrentUser()
@@ -19,7 +18,7 @@ export default async function HomePage() {
           <Image src="/vaughn_120.png" alt="Vaughn" width={60} height={60} className="rounded-full" />
           <div>
             <h1 className="text-2xl font-black text-slate-900 dark:text-white">Family Dashboard</h1>
-            <p className="text-sm text-slate-500 dark:text-slate-400">Smithlet Summer</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">Thanksgiving Road Trip</p>
           </div>
         </div>
         <UserButton current={me?.name ?? null} />
@@ -27,7 +26,6 @@ export default async function HomePage() {
 
       {/* Dashboard cards */}
       <div className="flex flex-col gap-4">
-        <BracketCongrats />
         <UpcomingEvents />
         <ChoresToday />
         <SchoolCountdown />
