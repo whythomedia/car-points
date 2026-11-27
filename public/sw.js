@@ -2,7 +2,7 @@
 
 const CACHE = 'car-points-v1'
 // Best-effort precache so a cold offline launch still has the shell.
-const PRECACHE = ['/', '/games', '/games/reading', '/manifest.json', '/vaughn_152.png', '/vaughn_120.png', '/vaughn_80.png']
+const PRECACHE = ['/', '/games', '/games/reading', '/games/museum', '/manifest.json', '/vaughn_152.png', '/vaughn_120.png', '/vaughn_80.png']
 
 self.addEventListener('install', (event) => {
   self.skipWaiting()
