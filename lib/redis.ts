@@ -1,6 +1,8 @@
 import { Redis } from '@upstash/redis'
 import type { Kid } from './types'
 import { PRACTICE_THROUGH_LESSON } from './games/sightwords'
+import type { MuseumState } from './games/museum/engine.mjs'
+import { MUSEUM_BONUS, puzzleByTreasure } from './games/museum/puzzles'
 
 export const redis = new Redis({
   url: process.env.UPSTASH_REDIS_REST_URL!,
@@ -162,6 +164,56 @@ export async function awardFlagQuiz(kidName: string): Promise<boolean> {
   await redis.set(FLAG_QUIZ_KEY, [...winners, kidName])
   await updateKidPoints(kidName, 10)
   return true
+}
+
+// Museum game — one saved game per person, and a one-time bonus per kid for
+// each puzzle finished. The save is the engine's whole state object.
+export type MuseumSave = { state: MuseumState; savedAt: string }
+
+function museumSaveKey(name: string) {
+  return `museum:save:${name}`
+}
+
+export async function getMuseumSave(name: string): Promise<MuseumSave | null> {
+  try {
+    return (await redis.get<MuseumSave>(museumSaveKey(name))) ?? null
+  } catch {
+    return null
+  }
+}
+
+export async function setMuseumSave(name: string, save: MuseumSave): Promise<void> {
+  await redis.set(museumSaveKey(name), save)
+}
+
+export async function clearMuseumSave(name: string): Promise<void> {
+  await redis.del(museumSaveKey(name))
+}
+
+// name -> treasures already paid for. Starting a new game never pays twice.
+const MUSEUM_AWARDS_KEY = 'museum:awards'
+
+export async function getMuseumAwards(): Promise<Record<string, string[]>> {
+  try {
+    return (await redis.get<Record<string, string[]>>(MUSEUM_AWARDS_KEY)) ?? {}
+  } catch {
+    return {}
+  }
+}
+
+// Pays the bonus for any of these treasures the kid hasn't been paid for yet.
+// Returns the ones newly paid.
+export async function awardMuseumPuzzles(kidName: string, treasures: string[]): Promise<string[]> {
+  const valid = treasures.filter((t) => puzzleByTreasure(t))
+  if (!valid.length) return []
+  const awards = await getMuseumAwards()
+  const had = awards[kidName] ?? []
+  const fresh = [...new Set(valid)].filter((t) => !had.includes(t))
+  if (!fresh.length) return []
+  awards[kidName] = [...had, ...fresh]
+  await redis.set(MUSEUM_AWARDS_KEY, awards)
+  await updateKidPoints(kidName, MUSEUM_BONUS * fresh.length)
+  return fresh
 }
 
 // License-plate game — a shared board of spotted states (by slug).

@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:museum": "node lib/games/museum/engine.test.mjs"
   },
   "dependencies": {
     "@upstash/redis": "^1.37.0",

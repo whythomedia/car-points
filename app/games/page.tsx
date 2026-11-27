@@ -79,6 +79,21 @@ export default async function GamesPage() {
           </span>
         </Link>
 
+        {/* The Museum */}
+        <Link
+          href="/games/museum"
+          className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-white p-4 transition-colors hover:border-teal-300 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-teal-700"
+        >
+          <span className="text-3xl">🏛️</span>
+          <div className="flex-1">
+            <div className="font-black text-slate-900 dark:text-white">The Museum</div>
+            <div className="text-sm text-slate-500 dark:text-slate-400">Locked in after closing</div>
+          </div>
+          <span className="rounded-full bg-teal-100 px-3 py-1 text-sm font-black text-teal-700 dark:bg-teal-900/50 dark:text-teal-300">
+            +5/puzzle
+          </span>
+        </Link>
+
         {/* Coming soon */}
         <div className="flex items-center gap-4 rounded-2xl border border-dashed border-slate-200 p-4 opacity-60 dark:border-slate-700">
           <span className="text-3xl">🌍</span>

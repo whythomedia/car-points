@@ -3,6 +3,8 @@
 import { revalidatePath } from 'next/cache'
 import {
   awardFlagQuiz,
+  awardMuseumPuzzles,
+  clearMuseumSave,
   claimReadingReward,
   claimVaultForKid,
   getReadingLevel,
@@ -13,6 +15,7 @@ import {
   recordReadingAttempts,
   removePushSubscriptions,
   savePushSubscription,
+  setMuseumSave,
   setReadingLevel,
   setStateSpotted,
   updateKidPoints,
@@ -28,6 +31,7 @@ import { getCurrentUser } from '@/lib/current-user'
 import { personByName, USER_COOKIE } from '@/lib/people'
 import { cookies } from 'next/headers'
 import { isPushConfigured, notifyStateSpotted, sendPushToAll } from '@/lib/push'
+import type { MuseumState } from '@/lib/games/museum/engine.mjs'
 
 export async function updateScore(kidName: string, delta: number): Promise<void> {
   await updateKidPoints(kidName, delta)
@@ -221,4 +225,39 @@ export async function sendAdminMessage(
 
 export async function unsubscribeFromPush(endpoint: string): Promise<void> {
   await removePushSubscriptions([endpoint])
+}
+
+// Museum game. The engine runs in the browser; this saves the signed-in
+// person's game and pays the one-time bonus for any puzzle they have finished.
+// Returns the treasures newly paid for, so the page can say so.
+const MUSEUM_SAVE_LIMIT = 200_000 // bytes of JSON; a real save is a fraction of this
+
+export async function saveMuseumGame(
+  state: MuseumState
+): Promise<{ ok: boolean; awarded: string[] }> {
+  const me = await getCurrentUser()
+  if (!me) return { ok: false, awarded: [] }
+  if (!state || typeof state !== 'object' || typeof state.id !== 'string' || !Array.isArray(state.placed)) {
+    return { ok: false, awarded: [] }
+  }
+  if (JSON.stringify(state).length > MUSEUM_SAVE_LIMIT) return { ok: false, awarded: [] }
+
+  await setMuseumSave(me.name, { state, savedAt: new Date().toISOString() })
+
+  let awarded: string[] = []
+  if (me.role === 'kid' && state.placed.length) {
+    awarded = await awardMuseumPuzzles(me.name, state.placed.filter((t) => typeof t === 'string'))
+    if (awarded.length) {
+      revalidatePath('/')
+      revalidatePath('/points')
+    }
+  }
+  return { ok: true, awarded }
+}
+
+// Start over: forget the signed-in person's saved game. Bonuses already paid stay paid.
+export async function resetMuseumGame(): Promise<void> {
+  const me = await getCurrentUser()
+  if (!me) return
+  await clearMuseumSave(me.name)
 }
